@@ -203,7 +203,7 @@ def template_development(branch_name):
 
 ## 自动同步区
 
-本区由 `dev-asset-context` 或 `dev-asset-sync` 刷新，请不要手工编辑。
+本区由 `dev-assets-context` 或 `dev-assets-sync` 刷新，请不要手工编辑。
 
 {AUTO_START}
 _尚未同步_
@@ -429,4 +429,3 @@ def append_commit_record(commits_path, payload):
     if payload["body"]:
         entry += f"\n### 说明\n\n{payload['body'].strip()}\n"
     commits_path.write_text(content.rstrip() + "\n" + entry, encoding="utf-8")
-

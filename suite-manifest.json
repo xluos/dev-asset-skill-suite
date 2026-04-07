@@ -2,12 +2,15 @@
   "suite_name": "dev-asset-skill-suite",
   "skills": [
     "using-dev-assets",
-    "dev-asset-setup",
-    "dev-asset-context",
-    "dev-asset-sync"
+    "dev-assets-setup",
+    "dev-assets-context",
+    "dev-assets-sync"
   ],
   "legacy_skills": [
     "branch-context",
-    "branch-context-setup"
+    "branch-context-setup",
+    "dev-asset-setup",
+    "dev-asset-context",
+    "dev-asset-sync"
   ]
 }
