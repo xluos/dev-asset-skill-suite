@@ -65,7 +65,16 @@ def install_hook(hook_path, block):
 
 
 def bullets(items):
-    return "\n".join(f"- {item}" for item in items if item)
+    return "\n".join(f"- {item}" for item in normalize_items(items))
+
+
+def normalize_items(items):
+    if items is None:
+        return []
+    if isinstance(items, str):
+        stripped = items.strip()
+        return [stripped] if stripped else []
+    return [str(item).strip() for item in items if str(item).strip()]
 
 
 def decision_body(item):
