@@ -94,11 +94,28 @@ def get_context_dir(repo_root, explicit_value=None):
     return value or DEFAULT_CONTEXT_DIR
 
 
+def normalize_context_dir(context_dir, branch_name, branch_key):
+    parts = list(Path(context_dir).parts)
+    branch_parts = list(Path(branch_name).parts)
+
+    if branch_parts and len(parts) >= len(branch_parts) and parts[-len(branch_parts) :] == branch_parts:
+        parts = parts[: -len(branch_parts)]
+    if parts and parts[-1] == branch_key:
+        parts = parts[:-1]
+
+    if not parts:
+        return DEFAULT_CONTEXT_DIR
+    return Path(*parts).as_posix()
+
+
 def get_branch_paths(repo, context_dir=None, branch=None):
     repo_root = detect_repo_root(repo)
     branch_name = branch or detect_branch(repo_root)
-    resolved_context_dir = get_context_dir(repo_root, context_dir)
     branch_key = sanitize_branch_name(branch_name)
+    raw_context_dir = get_context_dir(repo_root, context_dir)
+    resolved_context_dir = normalize_context_dir(raw_context_dir, branch_name, branch_key)
+    if not context_dir and resolved_context_dir != raw_context_dir:
+        set_repo_config(repo_root, resolved_context_dir)
     branch_dir = repo_root / resolved_context_dir / branch_key
     return repo_root, branch_name, branch_key, resolved_context_dir, branch_dir
 
