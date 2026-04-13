@@ -38,6 +38,54 @@ description: Use when the current conversation reaches a commit-related checkpoi
 
 这里的“共享资料入口”只指仓库共享层应该复用的文档、链接、外部资料，不包括当前分支后续要看的 hot paths、目录或局部代码入口。
 
+`record-session` 不接受任意自定义字段名。准备 `summary.json` 时，至少按下面的脚本实际 schema 组织：
+
+- `title`: string，可选
+- `overview_summary`: `string | string[]`，可选
+- `implementation_notes`: `string | string[]`，可选；`changes` 是它的兼容别名
+- `risks`: `string | string[]`，可选
+- `next_steps`: `string | string[]`，可选
+- `sources`: `string | string[]`，可选；`source_updates` 是它的兼容别名
+- `decisions`: `object[]`，可选；每项至少应有 `decision`，可选带 `reason`、`impact`
+- `memory` / `context_updates`: `string | string[]`，可选
+- `review_notes` / `frontend_updates` / `backend_updates` / `test_updates`: `string | string[]`，可选
+
+最小可用示例：
+
+```json
+{
+  "title": "本次检查点标题",
+  "implementation_notes": [
+    "完成了当前轮次最值得留存的进展"
+  ],
+  "risks": [
+    "还有一个已知风险未消除"
+  ],
+  "next_steps": [
+    "下次继续先做什么"
+  ],
+  "decisions": [
+    {
+      "decision": "之后优先检查页面入口装配和插件注入",
+      "reason": "同批功能整组缺失时，先看单插件显隐容易偏题",
+      "impact": "适用于同类插件化页面的排查顺序"
+    }
+  ],
+  "sources": [
+    "apps/example/page.tsx - 当前分支里与结论直接相关的共享代码入口"
+  ]
+}
+```
+
+不要自己发明近义字段名，例如：
+
+- 不要把 `implementation_notes` 写成 `current_progress`
+- 不要把 `risks` 写成 `blockers_or_caveats`
+- 不要把 `sources` 写成 `shared_sources`
+- 不要把 `decisions` 写成 `string[]`
+
+其中 `shared_sources` 这类错字段会被脚本忽略，`decisions` 如果写成字符串数组则会在处理 `item.get("decision")` 时直接报错。需要完整说明时，先看 `references/commit-sync.md`，不要凭印象脑补 schema。
+
 然后运行：
 
 ```bash
