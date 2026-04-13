@@ -174,11 +174,17 @@ Git 自动导航仍然主要落在 branch 层，repo 层只更新轻量元信息
 
 ### 2. hook 可以借，但只作为保底刷新层
 
-`dev-assets-sync` 仍然可以装 Git hooks，但它们更适合做：
+这里借的是 ECC 那种生命周期 hook，不是 Git hook。
 
-- HEAD 元信息刷新
-- working-tree 导航刷新
-- 阶段性 checkpoint 的轻量沉淀
+当前这套默认映射是：
+
+- Claude:
+  - `SessionStart`：恢复 branch 主记忆，并在需要时补 repo 共享层
+  - `PreCompact`：刷新 working-tree 导航，避免 compact 前丢掉最新关注目录
+  - `Stop` / `SessionEnd`：只写轻量 HEAD marker 和最近访问分支
+- Codex:
+  - `SessionStart`：恢复 branch 主记忆，并在需要时补 repo 共享层
+  - `Stop`：只写轻量 HEAD marker 和最近访问分支
 
 不适合让 hook 自动重写高语义正文。
 

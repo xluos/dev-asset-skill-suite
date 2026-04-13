@@ -1,0 +1,32 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 scripts/hooks/session_start.py",
+            "timeout": 20
+          }
+        ],
+        "description": "Load repo+branch dev-assets context at session start",
+        "id": "dev-assets:session-start"
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 scripts/hooks/stop.py",
+            "timeout": 15
+          }
+        ],
+        "description": "Persist lightweight HEAD markers after each response",
+        "id": "dev-assets:stop"
+      }
+    ]
+  }
+}

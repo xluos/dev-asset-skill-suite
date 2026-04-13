@@ -8,7 +8,6 @@ from pathlib import Path
 from dev_asset_common import (
     asset_paths,
     collect_git_facts,
-    detect_repo_root,
     get_branch_paths,
     get_head_commit,
     now_iso,
@@ -19,49 +18,6 @@ from dev_asset_common import (
     upsert_markdown_section,
     write_json,
 )
-
-HOOK_START = "# >>> dev-assets-sync >>>"
-HOOK_END = "# <<< dev-assets-sync <<<"
-
-
-def hook_block(command, script_path):
-    return "\n".join(
-        [
-            HOOK_START,
-            'REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"',
-            f'python3 "{script_path}" {command} --repo "$REPO_ROOT" >/dev/null 2>&1 || true',
-            HOOK_END,
-        ]
-    )
-
-
-def merge_hook_content(existing, block):
-    if HOOK_START in existing and HOOK_END in existing:
-        before, remainder = existing.split(HOOK_START, 1)
-        _, after = remainder.split(HOOK_END, 1)
-        merged = before.rstrip()
-        if merged:
-            merged += "\n"
-        merged += block
-        if after.strip():
-            merged += "\n" + after.lstrip("\n")
-        else:
-            merged += "\n"
-        return merged
-
-    stripped = existing.rstrip()
-    if not stripped:
-        return "#!/bin/sh\n" + block + "\n"
-    if not stripped.startswith("#!"):
-        stripped = "#!/bin/sh\n" + stripped
-    return stripped + "\n\n" + block + "\n"
-
-
-def install_hook(hook_path, block):
-    existing = hook_path.read_text(encoding="utf-8") if hook_path.exists() else ""
-    updated = merge_hook_content(existing, block)
-    hook_path.write_text(updated, encoding="utf-8")
-    hook_path.chmod(0o755)
 
 
 def normalize_items(items):
@@ -378,60 +334,17 @@ def command_record_head(args):
     )
 
 
-def command_install_hooks(args):
-    repo_root = detect_repo_root(args.repo)
-    git_dir = repo_root / ".git"
-    if not git_dir.exists():
-        raise RuntimeError(f"not a git repository: {repo_root}")
-
-    hooks_dir = Path(args.hooks_dir).expanduser().resolve() if args.hooks_dir else git_dir / "hooks"
-    hooks_dir.mkdir(parents=True, exist_ok=True)
-
-    script_path = Path(__file__).resolve()
-    installed = []
-
-    post_commit = hooks_dir / "post-commit"
-    install_hook(post_commit, hook_block("record-head", script_path))
-    installed.append(str(post_commit))
-
-    if args.enable_pre_commit:
-        pre_commit = hooks_dir / "pre-commit"
-        install_hook(pre_commit, hook_block("sync-working-tree", script_path))
-        installed.append(str(pre_commit))
-
-    print(
-        json.dumps(
-            {
-                "repo_root": str(repo_root),
-                "hooks_dir": str(hooks_dir),
-                "installed_hooks": installed,
-                "pre_commit_enabled": args.enable_pre_commit,
-            },
-            ensure_ascii=False,
-            indent=2,
-        )
-    )
-
-
 def main():
-    parser = argparse.ArgumentParser(description="Sync repo+branch development assets around commits.")
+    parser = argparse.ArgumentParser(description="Sync repo+branch development assets at persistence checkpoints.")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    for name in ("sync-working-tree", "record-head", "install-hooks", "record-session"):
+    for name in ("sync-working-tree", "record-head", "record-session"):
         sub = subparsers.add_parser(name)
         sub.add_argument("--repo", default=".", help="Path inside the target Git repository")
-        if name != "install-hooks":
-            sub.add_argument("--context-dir", help="User-home storage root. Defaults to ~/.codex/dev-assets/repos")
-            sub.add_argument("--branch", help="Branch name. Defaults to the current checked-out branch")
+        sub.add_argument("--context-dir", help="User-home storage root. Defaults to ~/.codex/dev-assets/repos")
+        sub.add_argument("--branch", help="Branch name. Defaults to the current checked-out branch")
         if name == "record-head":
             sub.add_argument("--commit", help="Explicit commit sha to record")
-        if name == "install-hooks":
-            sub.add_argument("--hooks-dir", help="Hook directory. Defaults to .git/hooks under --repo")
-            sub.add_argument(
-                "--enable-pre-commit",
-                action="store_true",
-                help="Also install a pre-commit hook to sync the working tree before commits",
-            )
         if name == "record-session":
             sub.add_argument("--summary-file", help="Path to a JSON file containing the session summary payload")
             sub.add_argument("--summary-json", help="Inline JSON session summary payload")
@@ -440,8 +353,6 @@ def main():
     try:
         if args.command == "sync-working-tree":
             command_sync_working_tree(args)
-        elif args.command == "install-hooks":
-            command_install_hooks(args)
         elif args.command == "record-session":
             command_record_session(args)
         else:

@@ -45,19 +45,23 @@ python3 /absolute/path/to/dev-assets-sync/scripts/dev_asset_sync.py record-sessi
 - 不把实现流水账写回记忆
 - 不把 branch-specific 当前状态写进 repo 共享正文
 
-### Step 4: Optional Git hook install
+### Step 4: Lifecycle hooks are the default low-friction path
 
-如果希望不依赖对话触发，也可以安装 Git hooks：
+如果希望不依赖对话里显式触发，就使用仓库提供的生命周期 hook 模板与脚本：
 
-```bash
-python3 /absolute/path/to/dev-assets-sync/scripts/dev_asset_sync.py install-hooks --repo <repo-path> --enable-pre-commit
-```
+- `SessionStart` 恢复当前 repo+branch 记忆
+- `PreCompact` 刷新 working-tree-derived navigation
+- `Stop` / `SessionEnd` 只保留轻量 HEAD marker
 
-其中：
+推荐的 repo-local 落地点：
 
-- `post-commit` 只刷新 HEAD 元信息
-- `pre-commit`（可选）刷新 working-tree-derived navigation
-- hook 默认只做同步，不阻塞 commit
+- Claude: `.claude/settings.local.json`
+- Codex: `.codex/hooks.json`
+
+可复用模板：
+
+- Claude: `hooks/hooks.json`
+- Codex: `hooks/codex-hooks.json`
 
 ## Commands
 
@@ -65,7 +69,6 @@ python3 /absolute/path/to/dev-assets-sync/scripts/dev_asset_sync.py install-hook
 python3 /absolute/path/to/dev-assets-sync/scripts/dev_asset_sync.py record-session --repo <repo-path> --summary-file <summary.json>
 python3 /absolute/path/to/dev-assets-sync/scripts/dev_asset_sync.py sync-working-tree --repo <repo-path>
 python3 /absolute/path/to/dev-assets-sync/scripts/dev_asset_sync.py record-head --repo <repo-path>
-python3 /absolute/path/to/dev-assets-sync/scripts/dev_asset_sync.py install-hooks --repo <repo-path> --enable-pre-commit
 ```
 
 ## Always / Never

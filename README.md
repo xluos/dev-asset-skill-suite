@@ -75,6 +75,35 @@ By default the suite stores memory outside the repository:
 - `branches/<branch>/`: branch-local working memory
 - `repo-key`: derived from repository identity, not just the folder name
 
+## Lifecycle Hooks
+
+This suite now follows ECC-style lifecycle hooks instead of Git hooks, and it supports both Claude and Codex.
+
+- Claude recommended repo-local target: `.claude/settings.local.json`
+- Codex recommended repo-local target: `.codex/hooks.json`
+- Claude reusable template: `hooks/hooks.json`
+- Codex reusable template: `hooks/codex-hooks.json`
+- Hook behavior guide: `hooks/README.md`
+
+Current mapping by agent:
+
+- Claude: `SessionStart`, `PreCompact`, `Stop`, `SessionEnd`
+- Codex: `SessionStart`, `Stop`
+
+Shared behavior:
+
+- `SessionStart`: restore repo+branch memory into the new session
+- `PreCompact`: refresh working-tree-derived navigation before compaction
+- `Stop`: persist a lightweight HEAD marker after each response
+- `SessionEnd`: persist the final HEAD marker at session end
+
+Boundary:
+
+- This repository ships reusable hook templates and helper scripts, but the actual repo-local config files are environment-local
+- In this clone, Codex can read `.codex/hooks.json` directly; Claude typically uses a local `.claude/settings.local.json` file that may be ignored by user-level Git rules
+- Global skill installs do not auto-load hooks yet, because this project is a skill suite rather than a standalone plugin
+- For global installs, merge `hooks/hooks.json` into Claude settings and `hooks/codex-hooks.json` into `~/.codex/hooks.json`
+
 ## Notes
 
 - The suite no longer stores its primary memory inside the Git worktree by default.
@@ -82,6 +111,5 @@ By default the suite stores memory outside the repository:
 - Detailed implementation history should stay in Git. When the agent needs exact changes, it should read `git log` / `git show` instead of copying commit history into dev assets.
 - Shared document entrances can live in repo-level `sources.md`; branch-specific progress and next-step live in branch files.
 - `dev-assets-setup` can migrate legacy `.dev-assets/<branch>/` content into the new user-home branch directory.
-- `dev-assets-sync` can still install non-blocking Git hooks. `post-commit` refreshes HEAD metadata, and optional `pre-commit` refreshes working-tree-derived navigation.
 - `npx skills` does not need `scripts/install_suite.py`; the repository already follows standard skill discovery rules.
 - `scripts/install_suite.py` remains useful for local symlink-based installs during development.

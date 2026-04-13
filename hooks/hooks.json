@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 scripts/hooks/session_start.py"
+          }
+        ],
+        "description": "Load repo+branch dev-assets context at session start",
+        "id": "dev-assets:session-start"
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 scripts/hooks/pre_compact.py",
+            "timeout": 20
+          }
+        ],
+        "description": "Refresh working-tree-derived navigation before compaction",
+        "id": "dev-assets:pre-compact"
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 scripts/hooks/stop.py",
+            "timeout": 15
+          }
+        ],
+        "description": "Persist lightweight HEAD markers after each response",
+        "id": "dev-assets:stop"
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 scripts/hooks/session_end.py",
+            "timeout": 15
+          }
+        ],
+        "description": "Persist final HEAD marker at session end",
+        "id": "dev-assets:session-end"
+      }
+    ]
+  }
+}

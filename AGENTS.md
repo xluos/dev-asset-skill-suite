@@ -65,12 +65,16 @@
 
 ### `dev-assets-sync`
 
-- 触发时机默认是提交前后或提交相关节点。
+- 触发时机默认是会话生命周期检查点或用户明确要求沉淀的节点，例如 `Stop`、`SessionEnd`、`PreCompact`、阶段性里程碑。
 - 主职责是沉淀“本次提交后仍然有价值的内容”，不是刷新整个分支状态。
 - 只关注本次这轮会话的 why / constraint / caveat / next-step / risk。
 - 不要把 commit history 复制到 dev-assets。
 - 不要在 `sync` 里做全局语义重建。
 - 只有在本次提交明确改变了分支整体目标 / 范围 / 阶段时，才允许触碰 branch `overview.md`。
+- 这套仓库不再依赖 Git hooks；默认的低摩擦保底机制是生命周期 hooks。
+- 当前仓库提供两套推荐的本地 hook 落地点与模板：
+  - Claude: `.claude/settings.local.json` + `hooks/hooks.json`
+  - Codex: `.codex/hooks.json` + `hooks/codex-hooks.json`
 
 ### `dev-assets-update`
 
