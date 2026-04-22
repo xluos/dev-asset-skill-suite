@@ -811,10 +811,26 @@ def upsert_markdown_section(path, title, body):
     path.write_text(join_sections(prefix, updated), encoding="utf-8")
 
 
+def _section_is_placeholder_only(text):
+    """True iff every non-empty line is a placeholder marker. Used by append
+    so a section freshly created from a template ("- 待补充") gets replaced
+    by the first real entry instead of accumulating "- 待补充" + content.
+    """
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if not lines:
+        return True
+    return all(any(marker in line for marker in PLACEHOLDER_MARKERS) for line in lines)
+
+
 def append_to_section(path, title, body):
     """Append body to the end of a markdown section, creating the section if
     missing. Used by graduate's append-mode harvest so multi-entry harvests
     don't clobber each other (unlike upsert which always replaces).
+
+    If the existing section body is only placeholder markers (e.g. "- 待补充"
+    from the initial template), the placeholder is dropped and the new body
+    becomes the section content — accumulating "- 待补充" alongside real
+    entries reads as a stale doc.
     """
     content = path.read_text(encoding="utf-8") if path.exists() else ""
     prefix, sections = split_sections(content)
@@ -823,7 +839,10 @@ def append_to_section(path, title, body):
     updated = []
     for existing_title, existing_body in sections:
         if existing_title.strip() == target and not matched:
-            combined = (existing_body.rstrip() + "\n" + body.strip()).strip()
+            if _section_is_placeholder_only(existing_body):
+                combined = body.strip()
+            else:
+                combined = (existing_body.rstrip() + "\n" + body.strip()).strip()
             updated.append((existing_title, combined))
             matched = True
         else:
