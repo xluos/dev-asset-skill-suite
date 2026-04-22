@@ -102,3 +102,16 @@ python3 /absolute/path/to/dev-assets-graduate/scripts/dev_asset_graduate.py appl
 # 列已归档分支
 python3 /absolute/path/to/dev-assets-graduate/scripts/dev_asset_graduate.py index --repo <repo-path>
 ```
+
+## Triggering note
+
+skill-creator description optimizer (3 iterations × 24 queries × 3 runs each) 在
+2026-04-22 跑出来的最优分仍是当前 description（precision 100% / test recall ≈ 50%）。
+进一步加关键词 / 明确触发条件反而让 recall 下降到 8–17%。原因是 graduate 的核心动作
+（mv 目录、写文件、调脚本）在 Claude 看来"自己直接能做"，所以即使 description 命中
+了关键词，Claude 仍然倾向不调 skill 而直接动手——这是 Claude Code 触发策略对操作型
+skill 的结构性偏好，不是 description 写法的问题。
+
+实践建议：当用户希望确保走完整 graduate 流程（harvest 上提 + dry-run + 归档 + INDEX
+登记）而不是裸 mv 时，**显式输入 `/dev-assets-graduate`** 作为 slash command，这样
+绕过 implicit 触发判定。本 skill 描述里所有"显式触发为主"的语义就是这个意图。
