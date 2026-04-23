@@ -224,6 +224,19 @@ def _build_context_from_assets(assets, *, full=True, heading=None):
     for title, body in sections:
         if body:
             parts.append(f"{title}:\n{compact_body(body, max_lines=max_lines, max_chars=max_chars)}")
+
+    # Brief-mode footer: point the agent (and the human reading this prompt)
+    # at the exact command to pull full memory. Without this, an agent that
+    # sees a 4-line brief may just act on it without realising there's 10x
+    # more detail one call away. no-git path has no drill-down concept, so
+    # skip it there.
+    if not full and not no_git:
+        repo_root = assets.get("repo_root")
+        repo_name = repo_root.name if hasattr(repo_root, "name") else "<repo>"
+        parts.append(
+            f"_brief 摘要。本 repo 完整记忆 → `dev-assets-context show --repo {repo_name}`_"
+        )
+
     return "\n\n".join(parts)
 
 
@@ -262,17 +275,29 @@ def build_context_for_repo(repo_path, *, full=True, is_primary=False):
 def build_workspace_start_context():
     """SessionStart context for workspace mode. Primary repo gets full memory;
     others get a brief overview only. Returns None if no initialized repos.
+
+    Fallback when DEV_ASSETS_PRIMARY_REPO is unset:
+      - Single-repo workspace → that repo is full (user's intent is obvious).
+      - Multi-repo workspace  → all brief, so N full dumps can't drown the
+        session. Header tells the agent how to promote one to full.
     """
     repos = list_workspace_repos()
     if not repos:
         return None
     primary = primary_repo_name()
+    only_one_repo = len(repos) == 1
     primary_hit = False
+    has_brief = False
     sections = []
     for repo_path in repos:
-        is_primary = (primary is None) or (repo_path.name == primary)
+        if primary is not None:
+            is_primary = (repo_path.name == primary)
+        else:
+            is_primary = only_one_repo
         if is_primary:
             primary_hit = True
+        else:
+            has_brief = True
         ctx = build_context_for_repo(repo_path, full=is_primary, is_primary=is_primary)
         if ctx:
             sections.append(ctx)
@@ -282,8 +307,14 @@ def build_workspace_start_context():
         f"已加载 dev-assets workspace 模式：共 {len(repos)} 个仓库 @ `{REPO_ROOT}`"
     ]
     if primary:
-        status = "命中" if primary_hit else "未在 workspace 中找到,全部按完整模式注入"
-        header_parts.append(f"Primary 仓库提示：`{primary}` ({status})")
+        status = "命中" if primary_hit else "未在 workspace 中找到"
+        header_parts.append(f"Primary 仓库：`{primary}` ({status})")
+    if has_brief:
+        header_parts.append(
+            "_其它仓库按 brief 摘要注入。聚焦某个仓库做实质工作前，"
+            "调用 `dev-assets-context` skill（或 `dev-assets-context show --repo <name>`）"
+            "加载完整记忆。_"
+        )
     header = "\n".join(header_parts)
     return header + "\n\n---\n\n" + "\n\n---\n\n".join(sections)
 
