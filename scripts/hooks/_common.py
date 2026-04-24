@@ -92,11 +92,28 @@ def strip_managed_markers(text):
     return text.replace(AUTO_START, "").replace(AUTO_END, "").replace("_尚未同步_", "").strip()
 
 
+# Sentinels produced by render_bullets/build_auto_block when git introspection
+# finds nothing to report. Not added to lib PLACEHOLDER_MARKERS because
+# list_missing_docs would then false-flag these as "section missing" — the user
+# can't fill them in, they're auto-derived. Filtered only at injection time.
+EMPTY_SENTINELS = (
+    "当前未检测到改动目录",
+    "当前未检测到改动范围",
+    "未检测到 origin/HEAD",
+    "尚未检测到 HEAD",
+)
+
+
 def is_placeholder(text):
     stripped = strip_managed_markers(text)
     if not stripped:
         return True
-    return any(marker in stripped for marker in PLACEHOLDER_MARKERS)
+    if any(marker in stripped for marker in PLACEHOLDER_MARKERS):
+        return True
+    lines = [line.strip() for line in stripped.splitlines() if line.strip()]
+    if lines and all(any(sentinel in line for sentinel in EMPTY_SENTINELS) for line in lines):
+        return True
+    return False
 
 
 def extract_section(path, title):
@@ -211,14 +228,9 @@ def _build_context_from_assets(assets, *, full=True, heading=None):
     no_git = assets.get("branch_name") is None
     if heading is None:
         if no_git:
-            parts.append(
-                f"已加载 dev-assets（no-git 模式）：项目 `{assets['repo_key']}`。"
-            )
+            parts.append("已加载 dev-assets（no-git 模式）。")
         else:
-            parts.append(
-                f"已加载 dev-assets：repo `{assets['repo_key']}`，branch `{assets['branch_name']}`。"
-            )
-        parts.append(f"主存储目录：`{assets['branch_dir']}`")
+            parts.append(f"已加载 dev-assets（分支 `{assets['branch_name']}`）。")
     else:
         parts.append(heading)
     for title, body in sections:
@@ -267,7 +279,7 @@ def build_context_for_repo(repo_path, *, full=True, is_primary=False):
         log(f"[dev-assets] context sync skipped for {Path(repo_path).name}: {exc}")
     tag = "[PRIMARY] " if is_primary else ""
     heading = (
-        f"## {tag}`{Path(repo_path).name}` — repo `{assets['repo_key']}`, branch `{assets['branch_name']}`"
+        f"## {tag}`{Path(repo_path).name}` @ branch `{assets['branch_name']}`"
     )
     return _build_context_from_assets(assets, full=full, heading=heading)
 
