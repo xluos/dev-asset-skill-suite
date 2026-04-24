@@ -154,6 +154,24 @@ npx -y @xluos/dev-assets-cli install-hooks claude --global
 
 Shell 包装器（`scripts/install_codex_hooks.sh`、`scripts/install_claude_hooks.sh`）只是上面命令的 shell 入口，适合偏好 shell 的环境。
 
+### 3. 浏览已存储的记忆（可选）
+
+装完 CLI 后，可以用 `dev-assets ui` 起一个本地浏览器界面，查看 `~/.dev-assets/repos/` 下所有 `(仓库, 分支)` 的记忆文件：
+
+```bash
+dev-assets ui                      # 随机端口 + 自动打开浏览器
+dev-assets ui --port 7878          # 固定端口
+dev-assets ui --no-open            # 只起服务，不开浏览器
+```
+
+界面提供：
+
+- 左栏：可搜索的仓库卡片列表（显示短名 + 完整 key + 分支数）
+- 右栏：选中仓库的结构化信息（仓库级记忆文件 + 分支 pill-tab 切换 + 每个分支的 manifest 摘要和记忆文件卡片）
+- 卡片内 md 文件会渲染为 heading / 列表 / 代码块等，预览区过长会截断并提供"展开全部"弹窗
+
+只读界面，不会改动任何存储文件。没装全局 CLI 时同样可以 `npx -y @xluos/dev-assets-cli ui`。
+
 ## 生命周期 Hook
 
 这套不再使用 Git hook，改用 ECC 风格的生命周期 hook，Claude 和 Codex 都支持：
