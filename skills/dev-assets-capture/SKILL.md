@@ -1,11 +1,11 @@
 ---
 name: dev-assets-capture
-description: 统一写入入口：把本轮对话产生的决策 / 进展 / 阻塞 / 术语 / 跨分支经验沉淀到当前仓库+分支的开发记忆。在 Git 仓库或非 git 项目开发中随时可触发 —— lazy init，不再要求先 setup。触发词："commit 一下"、"告一段落"、"先到这"、"明天再继续"、"记一笔"、"刚才说的改了"、"那个结论过时了"、"同步到 dev-assets"、"把这条经验写进去"；以及检测到本轮产生了稳定结论 / 新决策 / 新阻塞 / 新 commit 未同步时。也替代了已经删除的 dev-assets-sync 和 dev-assets-update —— 任何"写入分支记忆"的需求都走这里。
+description: 统一写入入口：把本轮对话产生的决策 / 进展 / 阻塞 / 术语 / 跨分支经验沉淀到当前仓库+分支的开发记忆。在 Git 仓库或非 git 项目开发中随时可触发 —— lazy init，不再要求先 setup。触发词："commit 一下"、"告一段落"、"先到这"、"明天再继续"、"记一笔"、"刚才说的改了"、"那个结论过时了"、"同步到 dev-assets"、"把这条经验写进去"、"用 X 不要 Y"、"以后都走 Z"、"别这样做，改 Y"、"这个仓库一律不用 W"；以及检测到本轮产生了稳定结论 / 新决策 / 新阻塞 / 新 commit 未同步、用户纠正 agent 做法、用户声明偏好或禁令、反复试错终于收敛出结论时 —— 这几类经验不立刻记就会被下一个 agent 重新踩一遍。任何"写入分支记忆"的需求都走这里。
 ---
 
 # Dev Assets Capture
 
-Capture 是 dev-assets 套件里**唯一的写入入口**。不管是 checkpoint 批量记录，还是改写某段旧结论，还是随手丢一句话给它自己分类，都走这个 skill。它替代了老的 `dev-assets-sync` + `dev-assets-update`。
+Capture 是 dev-assets 套件里**唯一的写入入口**。不管是 checkpoint 批量记录，还是改写某段旧结论，还是随手丢一句话给它自己分类，都走这个 skill。
 
 核心特性：
 
@@ -39,11 +39,22 @@ Capture 是 dev-assets 套件里**唯一的写入入口**。不管是 checkpoint
 - 新 commit 已经落盘，但 `progress.md` 的 "当前进展" 还在上一版
 - 用户手动甩了一段话（"这段记一下"）
 
+**经验/教训类（用户不主动开口但高价值，agent 必须主动捕捉）：**
+
+这一类是 dev-assets 的最大收益点 —— 不现在记，下一个 agent（或下一次的你）就会重新走同一条弯路、被同一个用户纠正同一件事。识别信号：
+
+- **试错收敛型**：本轮经过多轮尝试才拿到可用答案。除了最终结论（→ `decision`），把**走过的弯路**单独记 `risk`（"以为 X 能行，结果 Y 失败，最终改 Z"）。不记，下次 dead-end 会被完整重走一遍 —— 这正是 capture 存在的理由。
+- **用户反对 / 纠正 agent 做法**：agent 做了或提议了 X，用户说 "不对，改 Y" / "别这样做" / "这里不能这么用" —— 用户的反向意见本身就是决策（→ `decision`，reason 直接引用用户的原话或原意）。如果纠正听上去是一般性规则（不局限于本次场景），升格为 `shared-decision`。
+- **用户声明偏好/禁令**：用户说 "以后 X 都用 Y" / "不要用 Z" / "这个仓库一律走 W" —— 最典型的跨分支规则，直接走 `shared-decision` 写 repo/decisions.md，不要落在分支层（分支结束就丢了）。
+- **认知修正 / gotcha**：本轮出现"原以为 X，实际 Y"的反直觉发现，即便用户没说"记一下"，也算 `risk`。
+
+这一类**强烈适合 pending-promotion**：内置 `is_cross_branch_candidate()` 会识别 "经验/模式/教训/通用/复用/gotcha/pattern/lesson" 类信号并自动追加到 `pending-promotion.md`；content 措辞里带上这些词能帮分类器更准确地打标。
+
 ### DON'T — 这些时刻不要跑 capture
 
 - 本轮只是探索性讨论，还没形成可保留结论（等稳定再记）
 - 纯上下文澄清、一次性问答（"这是什么"类问题）
-- 用户在快速试错中，结论还在反复变（等用户确认了再记）
+- 用户在快速试错中，结论还在反复变（等收敛后再一次性 capture 试错过程 + 最终结论，参见上方"试错收敛型"）
 - SessionStart 注入的内容已经覆盖本轮产出，没有新增（避免重复写）
 
 ## 三种写入模式
@@ -136,7 +147,7 @@ payload 字段 → kind 的映射内置在脚本里，不需要用户关心。
 | 未 setup | 不确定 → unsorted | 用户稍后跑 setup 时批量分类 |
 | 已 setup | 不确定 → progress | unsorted 基本不用了 |
 
-Capture **永远不会拒绝写入**。这是它和老 sync/update 最大的差别 —— 老两个 skill 会在 `branch_dir 不存在` 时报 `Run dev-assets-setup first.`，capture 不会。
+Capture **永远不会拒绝写入**：`branch_dir 不存在` 时走 lazy-init 自动建骨架，`setup_completed=false` 时 auto 分类兜底到 `unsorted`，从不 fail。
 
 ## Cross-branch staging 机制
 
