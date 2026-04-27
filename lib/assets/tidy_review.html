@@ -20,10 +20,18 @@
   --accept-bg: #dafbe1;
   --reject: #c4271f;
   --reject-bg: #ffe9e9;
+  --custom: #6639ba;
+  --custom-bg: #ece4f7;
   --warn-bg: #fff8c5;
   --warn-fg: #9a6700;
   --shadow: 0 1px 3px rgba(31,35,40,0.06);
   --radius: 8px;
+  /* Priority palette */
+  --p0-fg: #ffffff;  --p0-bg: #cf222e;
+  --p1-fg: #ffffff;  --p1-bg: #d97757;
+  --p2-fg: #6e5400;  --p2-bg: #f7d54d;
+  --p3-fg: #ffffff;  --p3-bg: #2c8eef;
+  --p4-fg: #4a4a4a;  --p4-bg: #d0d4d9;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -41,9 +49,16 @@
     --accept-bg: #033d1a;
     --reject: #ff7b72;
     --reject-bg: #4d1717;
+    --custom: #c8a8ff;
+    --custom-bg: #2a1d4d;
     --warn-bg: #4d3800;
     --warn-fg: #eac54f;
     --shadow: 0 1px 3px rgba(0,0,0,0.4);
+    --p0-bg: #ff6b6b; --p0-fg: #1a0606;
+    --p1-bg: #ffa657; --p1-fg: #1a0a02;
+    --p2-bg: #d2a8ff; --p2-fg: #1a0030;
+    --p3-bg: #58a6ff; --p3-fg: #02112a;
+    --p4-bg: #4a4f55; --p4-fg: #d0d4d9;
   }
 }
 
@@ -121,6 +136,7 @@ h1 { font-size: 19px; font-weight: 600; margin: 0; }
 }
 .card.rejected { opacity: 0.55; border-style: dashed; }
 .card.accepted { border-color: var(--accept); }
+.card.custom { border-color: var(--custom); }
 
 .card > header {
   padding: 12px 14px 8px;
@@ -148,6 +164,51 @@ h1 { font-size: 19px; font-weight: 600; margin: 0; }
 .toggle button:hover { background: var(--bg-hover); color: var(--fg); }
 .toggle button.on.accept { background: var(--accept-bg); color: var(--accept); border-color: var(--accept); font-weight: 600; }
 .toggle button.on.reject { background: var(--reject-bg); color: var(--reject); border-color: var(--reject); font-weight: 600; }
+.toggle button.on.custom { background: var(--custom-bg); color: var(--custom); border-color: var(--custom); font-weight: 600; }
+
+.priority-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  margin-right: 8px;
+  font-size: 10.5px;
+  font-weight: 700;
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0.5px;
+  border-radius: 4px;
+  vertical-align: middle;
+}
+.priority-badge.P0 { background: var(--p0-bg); color: var(--p0-fg); }
+.priority-badge.P1 { background: var(--p1-bg); color: var(--p1-fg); }
+.priority-badge.P2 { background: var(--p2-bg); color: var(--p2-fg); }
+.priority-badge.P3 { background: var(--p3-bg); color: var(--p3-fg); }
+.priority-badge.P4 { background: var(--p4-bg); color: var(--p4-fg); }
+
+.custom-feedback {
+  border-top: 1px solid var(--border-subtle);
+  background: var(--custom-bg);
+  padding: 10px 14px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.custom-feedback label {
+  font-size: 11px;
+  color: var(--custom);
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+.custom-feedback textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 8px 10px;
+  border: 1px solid var(--custom);
+  border-radius: 5px;
+  background: var(--bg-card);
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 12.5px;
+  line-height: 1.5;
+  resize: vertical;
+}
+.custom-feedback textarea:focus { outline: none; box-shadow: 0 0 0 2px var(--custom-bg); }
 
 .card .reason {
   padding: 0 14px 8px;
@@ -238,6 +299,17 @@ h1 { font-size: 19px; font-weight: 600; margin: 0; }
   font-size: 11.5px;
   color: var(--fg-muted);
   margin-bottom: 4px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.unproposed .file-purpose {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", system-ui, sans-serif;
+  font-size: 11px;
+  color: var(--fg-subtle);
+  font-weight: normal;
+  font-style: italic;
 }
 .unproposed .uplus {
   margin: 0; padding-left: 18px;
@@ -332,11 +404,11 @@ h1 { font-size: 19px; font-weight: 600; margin: 0; }
 
 <div class="guide">
   <strong>使用说明</strong><br>
-  · 主视图是 <strong>proposal 卡片</strong> —— 每张卡是一个&quot;事项&quot;，agent 已经把相关条目聚合好<br>
-  · 每张卡片右上角 <code>accept</code> / <code>reject</code> 切换；展开 <code>查看影响 entries</code> 看具体动了哪些 entry / section / 文件<br>
-  · 默认每张卡都是 accept。一眼扫完，不同意的点 reject 即可<br>
+  · 主视图是 <strong>proposal 卡片</strong>，按 priority 排序（<span class="priority-badge P0">P0</span> 最紧急 → <span class="priority-badge P4">P4</span> 可选），agent 已经把相关条目聚合好<br>
+  · 每张卡片三选一：<code>accept</code>（按原方案做）/ <code>reject</code>（不动）/ <code>custom</code>（写文字反馈让 agent 参考你的思路处理）<br>
+  · 默认每张卡都是 accept。同意就跳过，不同意点 reject，要按你思路改写就点 custom 写反馈<br>
   · 漏网之鱼：底部&quot;未提议&quot;折叠区可看 agent 没聚合的 entry，里面提供单条&quot;标 delete&quot;按钮<br>
-  · 审完点蓝色&quot;导出 plan.json&quot; → 文件下载到 Downloads → 告诉 agent 路径继续 apply（apply 永远先备份）
+  · 审完点蓝色&quot;导出 plan.json&quot; → 文件下载到 Downloads → 告诉 agent 路径继续：accept 的会被 apply（永远先备份），custom 的 agent 读完反馈后视情况处理（直接动手 / 跟你澄清 / 重新出方案）
 </div>
 
 <script>
@@ -344,10 +416,35 @@ h1 { font-size: 19px; font-weight: 600; margin: 0; }
 
 const TIDY = __TIDY_DATA_PLACEHOLDER__;
 
+const FILE_PURPOSE = {
+  "branch/overview.md": "当前分支冷启动摘要：目标 / 范围 / 当前阶段 / 关键约束 / 关联资料",
+  "branch/decisions.md": "当前分支的稳定决策 + 为什么这么决定（Why）",
+  "branch/progress.md": "当前分支进展 + 下一步 + 自动同步区（git 改动概览）",
+  "branch/risks.md": "当前分支的阻塞 / 注意点 / 续做前要留意的事",
+  "branch/glossary.md": "当前分支术语 / 有效上下文 / 源资料入口",
+  "branch/unsorted.md": "heuristic 不确定分类的内容；下次 setup 或 capture --merge 会分到 decisions/progress/risks/glossary",
+  "branch/pending_promotion.md": "capture 自动打标的跨分支候选；graduate 时优先从这里 harvest 提到 repo 共享层",
+  "repo/overview.md": "仓库级长期目标 + 关键约束（跨分支共享，所有分支会话都会读）",
+  "repo/decisions.md": "仓库级跨分支通用决策（一次写好，所有分支共享读）",
+  "repo/glossary.md": "仓库级长期有效背景 / 共享入口 / 共享注意点"
+};
+
+// proposalState[pid] = "accept" | "reject" | "custom"
 const proposalState = {};
+// customFeedback[pid] = textarea contents (preserved across toggles)
+const customFeedback = {};
 const extraActions = {};
 const allFiles = TIDY.files || [];
-const allProposals = TIDY.proposals || [];
+const PRIORITY_ORDER = { P0: 0, P1: 1, P2: 2, P3: 3, P4: 4, "": 5 };
+// Sort proposals by priority (P0 → P4), unprioritized last; tiebreak by id.
+const allProposals = (TIDY.proposals || [])
+  .slice()
+  .sort(function (a, b) {
+    const pa = PRIORITY_ORDER[(a.priority || "").toUpperCase()] ?? 5;
+    const pb = PRIORITY_ORDER[(b.priority || "").toUpperCase()] ?? 5;
+    if (pa !== pb) return pa - pb;
+    return String(a.id).localeCompare(String(b.id));
+  });
 
 (function init() {
   for (const p of allProposals) proposalState[p.id] = "accept";
@@ -433,7 +530,8 @@ function renderProposals() {
   for (const p of allProposals) {
     const cur = proposalState[p.id] || "accept";
     const card = document.createElement("div");
-    card.className = "card " + (cur === "accept" ? "accepted" : "rejected");
+    const stateClass = cur === "accept" ? "accepted" : (cur === "custom" ? "custom" : "rejected");
+    card.className = "card " + stateClass;
     card.dataset.pid = p.id;
 
     const impactRows = (p.actions || []).map(function (a) {
@@ -443,12 +541,25 @@ function renderProposals() {
 
     const previewBlocks = (p.actions || []).map(function (a) { return entriesPreview(a); }).join("");
 
+    const priority = (p.priority || "").toUpperCase();
+    const priorityBadge = priority
+      ? "<span class=\"priority-badge " + priority + "\">" + priority + "</span>"
+      : "";
+
+    const customBlock = cur === "custom"
+      ? "<div class=\"custom-feedback\">" +
+          "<label>你的修改意见</label>" +
+          "<textarea data-pid=\"" + escapeHtml(p.id) + "\" placeholder=\"例：不要整段删，只删第一句；或：保留这条但改写成 xxx；或：先放着，下次 tidy 再看\">" + escapeHtml(customFeedback[p.id] || "") + "</textarea>" +
+        "</div>"
+      : "";
+
     card.innerHTML =
       "<header>" +
-        "<div class=\"title\"><span class=\"pid\">" + escapeHtml(p.id) + "</span>" + escapeHtml(p.title) + "</div>" +
+        "<div class=\"title\">" + priorityBadge + "<span class=\"pid\">" + escapeHtml(p.id) + "</span>" + escapeHtml(p.title) + "</div>" +
         "<div class=\"toggle\">" +
           "<button data-act=\"accept\" class=\"" + (cur === "accept" ? "on accept" : "") + "\">accept</button>" +
           "<button data-act=\"reject\" class=\"" + (cur === "reject" ? "on reject" : "") + "\">reject</button>" +
+          "<button data-act=\"custom\" class=\"" + (cur === "custom" ? "on custom" : "") + "\">custom</button>" +
         "</div>" +
       "</header>" +
       (p.reason ? "<div class=\"reason\">" + escapeHtml(p.reason) + "</div>" : "") +
@@ -456,7 +567,8 @@ function renderProposals() {
       "<details class=\"details\">" +
         "<summary>查看影响 entries</summary>" +
         previewBlocks +
-      "</details>";
+      "</details>" +
+      customBlock;
 
     for (const btn of card.querySelectorAll(".toggle button")) {
       btn.addEventListener("click", function () {
@@ -464,6 +576,10 @@ function renderProposals() {
         renderProposals();
         refreshSummary();
       });
+    }
+    const ta = card.querySelector(".custom-feedback textarea");
+    if (ta) {
+      ta.addEventListener("input", function () { customFeedback[p.id] = ta.value; });
     }
     root.appendChild(card);
   }
@@ -512,8 +628,12 @@ function renderUnproposed() {
     totalUnproposed += items.length;
     const block = document.createElement("div");
     block.className = "file-block";
+    const purpose = FILE_PURPOSE[f.label] || "";
     block.innerHTML =
-      "<div class=\"file-label\">" + escapeHtml(f.label) + "</div>" +
+      "<div class=\"file-label\">" +
+        "<span>" + escapeHtml(f.label) + "</span>" +
+        (purpose ? "<span class=\"file-purpose\">" + escapeHtml(purpose) + "</span>" : "") +
+      "</div>" +
       "<ul class=\"uplus\">" + items.join("") + "</ul>";
     body.appendChild(block);
   }
@@ -541,24 +661,39 @@ function bulkSet(accept) {
 window.bulkSet = bulkSet;
 
 function refreshSummary() {
-  let a = 0, r = 0;
+  let a = 0, r = 0, c = 0;
   for (const v of Object.values(proposalState)) {
     if (v === "accept") a++;
     else if (v === "reject") r++;
+    else if (v === "custom") c++;
   }
   const e = Object.keys(extraActions).length;
-  document.getElementById("summary").textContent =
-    allProposals.length + " 个 proposal · accept " + a + " · reject " + r +
-    (e ? " · 额外 " + e + " 条 delete" : "");
+  let line = allProposals.length + " 个 proposal · accept " + a + " · reject " + r;
+  if (c) line += " · custom " + c;
+  if (e) line += " · 额外 " + e + " 条 delete";
+  document.getElementById("summary").textContent = line;
 }
 
 function exportPlan() {
   const accepted = [];
+  const rejected = [];
+  const custom = [];
   const actions = [];
   for (const p of allProposals) {
-    if (proposalState[p.id] !== "accept") continue;
-    accepted.push(p.id);
-    for (const a of (p.actions || [])) actions.push(a);
+    const st = proposalState[p.id];
+    if (st === "accept") {
+      accepted.push(p.id);
+      for (const a of (p.actions || [])) actions.push(a);
+    } else if (st === "reject") {
+      rejected.push(p.id);
+    } else if (st === "custom") {
+      custom.push({
+        proposal_id: p.id,
+        title: p.title,
+        original_actions: p.actions || [],
+        user_feedback: (customFeedback[p.id] || "").trim(),
+      });
+    }
   }
   for (const eid in extraActions) {
     if (extraActions[eid] === "delete") actions.push({ id: eid, action: "delete" });
@@ -567,6 +702,8 @@ function exportPlan() {
     tidy_id: TIDY.scope.generated_at,
     scope: { include_repo: !!TIDY.scope.include_repo },
     accepted_proposals: accepted,
+    rejected_proposals: rejected,
+    custom_proposals: custom,
     actions: actions,
     notes: document.getElementById("notes").value || "",
   };

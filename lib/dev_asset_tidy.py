@@ -89,6 +89,7 @@ REPO_FILE_KEYS = (
 VALID_HINTS = {"STALE", "DUP", "OK", "UNCLEAR"}
 VALID_ENTRY_ACTIONS = {"keep", "delete", "edit"}
 VALID_PROPOSAL_TYPES = {"delete-entries", "delete-section", "reset-file", "edit-entries"}
+VALID_PRIORITIES = {"P0", "P1", "P2", "P3", "P4"}
 
 
 def _now_stamp():
@@ -261,10 +262,16 @@ def _validate_proposals(raw):
                     f"must be one of {sorted(VALID_PROPOSAL_TYPES)}"
                 )
             cleaned_actions.append(a)
+        priority = (p.get("priority") or "").strip().upper()
+        if priority and priority not in VALID_PRIORITIES:
+            raise ValueError(
+                f"proposal {pid} priority must be one of {sorted(VALID_PRIORITIES)} or empty, got {priority!r}"
+            )
         cleaned.append({
             "id": pid,
             "title": title,
             "reason": reason,
+            "priority": priority,
             "actions": cleaned_actions,
         })
     return cleaned
@@ -609,6 +616,10 @@ def command_apply(args):
         _rewrite_file(path, sec_actions)
         rewritten.append({"file_key": fk, "path": str(path), "op": "entry-actions"})
 
+    accepted = plan.get("accepted_proposals") or []
+    rejected = plan.get("rejected_proposals") or []
+    custom = plan.get("custom_proposals") or []
+
     summary_path = branch_dir / "tidy_review" / f"summary_{stamp}.md"
     summary_path.parent.mkdir(parents=True, exist_ok=True)
     summary_lines = [
@@ -617,8 +628,10 @@ def command_apply(args):
         f"- branch: `{branch_name}`",
         f"- include_repo: `{include_repo}`",
         f"- backup: `{backup_dir}`",
-        f"- accepted proposals: {len(plan.get('accepted_proposals') or [])}",
-        f"- actions submitted: {len(actions)}",
+        f"- accepted proposals: {len(accepted)}",
+        f"- rejected proposals: {len(rejected)}",
+        f"- custom proposals: {len(custom)}",
+        f"- actions applied: {len(actions)}",
         f"- files rewritten: {len(rewritten)}",
         f"- invalid items: {len(invalid)}",
     ]
@@ -627,6 +640,16 @@ def command_apply(args):
     if rewritten:
         summary_lines += ["", "## rewritten", ""]
         summary_lines += [f"- {r['file_key']} ({r['op']})" for r in rewritten]
+    if custom:
+        summary_lines += [
+            "",
+            "## custom proposals (NOT applied — agent must read user feedback and re-propose)",
+            "",
+        ]
+        for c in custom:
+            pid = c.get("proposal_id") or c.get("id") or "?"
+            fb = (c.get("user_feedback") or "").strip()
+            summary_lines += [f"### {pid}", "", fb or "(empty feedback)", ""]
     if invalid:
         summary_lines += ["", "## invalid", ""]
         summary_lines += [f"- {json.dumps(v, ensure_ascii=False)}" for v in invalid]
@@ -637,10 +660,22 @@ def command_apply(args):
         "branch": branch_name,
         "branch_dir": str(branch_dir),
         "backup_dir": str(backup_dir),
+        "accepted_proposals": accepted,
+        "rejected_proposals": rejected,
+        "custom_proposals": custom,
         "rewritten": rewritten,
         "invalid": invalid,
         "summary": str(summary_path),
         "actions_count": len(actions),
+        "next_steps": (
+            [
+                "Read each custom_proposals user_feedback and decide how to handle it based on the content. "
+                "It is NOT automatic 're-run prepare' — depending on the feedback you may: act inline (capture/tidy subcommand), "
+                "ask the user to clarify, defer with a note, or only when the feedback genuinely calls for "
+                "fresh proposals run another `tidy prepare --proposals-file <revised>`."
+            ]
+            if custom else []
+        ),
     }, ensure_ascii=False, indent=2))
     return 0
 

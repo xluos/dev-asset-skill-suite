@@ -28,10 +28,23 @@ Tidy 是 dev-assets 套件里**已结构化记忆的定期校准入口**。
 | `reset-file` | 整个文件骨架都过期了，重置回 v2 模板最干净 | `{"type": "reset-file", "file_key": "unsorted"}` |
 | `edit-entries` | 改写一组 entry 文本 | `{"type": "edit-entries", "edits": [{"id": "...", "new_text": "..."}]}` |
 
+每个 proposal 还可以打 priority（可选）：
+
+| Priority | 含义 | UI 颜色 |
+|---|---|---|
+| `P0` | 紧急 / 必删（陈旧到误导，留着会让下个 agent 走错路） | 红 |
+| `P1` | 高 / 强烈建议清理 | 橙 |
+| `P2` | 中 / 建议清理但保留也行 | 黄 |
+| `P3` | 低 / 可选清理 | 蓝 |
+| `P4` | 可有可无 / 标记保留 | 灰 |
+
+HTML 卡片按 priority 升序排列（P0 在最上），未打 priority 的排最后。
+
 聚合原则：
 - **同因同果合并**：所有"删 demo 资产模板列表"的条目合一个 proposal，不是 8 条 delete
 - **section / file 颗粒度优先**：能用 `delete-section` 就别枚举 entries；能用 `reset-file` 就别 `delete-section` 一堆
 - **写好 title 和 reason**：title 要让用户一眼看懂"做什么"，reason 解释"为什么"。proposal 是给用户审的，不是给脚本对账的
+- **priority 反映 stale 程度而非数量**：一条让下个 agent 误导的过期决策也是 P0；几十条无害模板占位顶多 P3
 
 ## DO / DON'T
 
@@ -122,12 +135,14 @@ npx dev-assets tidy prepare \
 引导用户：
 
 > 我已经生成 review HTML：`<open_url>`
-> 主视图是 N 张 proposal 卡片，每张代表一件事。默认全部 accept，不同意的点 reject 即可。
+> 主视图是 N 张 proposal 卡片，按 priority 排序（P0 红色最紧急 → P4 灰色可选）。
+> 每张卡片三选一：**accept**（按原方案做）/ **reject**（不动）/ **custom**（写文字反馈让我参考你的思路处理）。默认全部 accept。
+> 同意就跳过，不同意点 reject，要按你思路改写就点 custom 写反馈。
 > 想看具体动了哪些 entry → 点卡片底部"查看影响 entries"。
 > "未提议"折叠区可以扫漏网之鱼。
 > 审完点蓝色"导出 plan.json"下载到 Downloads，告诉我路径。
 
-### Step 4: apply
+### Step 4: apply（处理 accept；custom 不 apply，交给 agent 后续判断）
 
 ```bash
 npx dev-assets tidy apply \
@@ -137,8 +152,23 @@ npx dev-assets tidy apply \
 
 行为：
 - **先备份**：scope 内所有 .md 整份 copy 到 `branches/<branch>/tidy_backup_<ts>/` + 写 manifest
-- 按 plan.actions 落盘：reset-file 优先（覆盖该文件其他动作）→ delete-section → entry-level delete/edit
-- 在 `branches/<branch>/tidy_review/summary_<ts>.md` 写一份 summary（已接受的 proposal id、计数、rewritten / invalid 列表）
+- 按 `plan.actions` 落盘（这里只含 accept 的 proposals）：reset-file 优先（覆盖该文件其他动作）→ delete-section → entry-level delete/edit
+- **`custom_proposals` 不 apply**：apply 把它们记到 summary 的"custom proposals (NOT applied)"section，列出每条用户反馈
+- 在 `branches/<branch>/tidy_review/summary_<ts>.md` 写一份 summary（accepted/rejected/custom 计数、rewritten 列表、custom 反馈原文、invalid 列表）
+
+### Step 5（仅当有 custom）: 读用户反馈，按反馈内容判断怎么处理
+
+如果 plan.json 含 `custom_proposals`，agent 读每条 `user_feedback` 后，**根据反馈内容**决定下一步 —— 不是机械地"再起一轮"：
+
+| 反馈类型示例 | 合适的处理 |
+|---|---|
+| "不要整段删，只删第一句" / "把 X 改成 Y" | 直接调用 capture / tidy 子命令在对话里完成 |
+| "我不确定这个还要不要，你帮我看下细节" | 在对话里跟用户解释 + 一起决定 |
+| "先放着不动，下次再看" | 不做事，记到 progress 或下次 tidy 提醒 |
+| "原方案不对，重新出几个 proposal 给我看" | 再起一轮 `tidy prepare --proposals-file <revised>` |
+| "和当时讨论 X 的结论冲突了" | 先 capture 一条 decision 修订，再视情况 tidy |
+
+原则：custom 是用户给 agent 的开放式反馈，不强制走任何固定流程；agent 像处理任何其他对话一样基于上下文决定。
 
 ## plan.json 格式（HTML 导出形态）
 
@@ -146,10 +176,18 @@ npx dev-assets tidy apply \
 {
   "tidy_id": "20260427T160000Z",
   "scope": { "include_repo": false },
-  "accepted_proposals": ["p1", "p2", "p3"],
+  "accepted_proposals": ["p1", "p3"],
+  "rejected_proposals": ["p4"],
+  "custom_proposals": [
+    {
+      "proposal_id": "p2",
+      "title": "...",
+      "original_actions": [...],
+      "user_feedback": "不要整段删，只删第一句"
+    }
+  ],
   "actions": [
     {"type": "delete-entries", "ids": ["overview::6::0", ...]},
-    {"type": "delete-section", "file_key": "overview", "section_idx": 7},
     {"type": "reset-file", "file_key": "unsorted"},
     {"id": "extra::1::0", "action": "delete"}
   ],
@@ -157,7 +195,11 @@ npx dev-assets tidy apply \
 }
 ```
 
-`actions` 是被接受 proposal 里所有 actions 的 flatten 结果 + "未提议"折叠区里用户额外手动标 delete 的 entry-level actions。Apply 不区分来源，按字段类型 (`type` vs `id`) 调度。
+字段说明：
+- `actions`：accept 的 proposal 中所有 actions 的 flatten + "未提议"折叠区里用户额外标 delete 的 entry-level actions。Apply 不区分来源，按 `type` vs `id` 字段调度
+- `accepted_proposals`：审计字段（不影响 apply 行为）
+- `rejected_proposals`：用户明确拒绝了哪些（让 agent 知道哪些不该再提）
+- `custom_proposals`：用户对 proposal 给了自由文本反馈；apply 跳过这些不动盘，agent 读完反馈后视情况处理（参见 Step 5）
 
 ## 设计取舍
 
