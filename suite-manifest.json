@@ -5,7 +5,8 @@
     "dev-assets-setup",
     "dev-assets-context",
     "dev-assets-capture",
-    "dev-assets-graduate"
+    "dev-assets-graduate",
+    "dev-assets-tidy"
   ],
   "legacy_skills": [
     "branch-context",

@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dev-assets tidy review</title>
+<style>
+:root {
+  --fg: #1f2328;
+  --fg-muted: #59636e;
+  --fg-subtle: #8b949e;
+  --bg: #f6f8fa;
+  --bg-card: #ffffff;
+  --bg-hover: #f0f3f6;
+  --border: #d1d9e0;
+  --border-subtle: rgba(209, 217, 224, 0.6);
+  --accent: #0969da;
+  --accent-fg: #ffffff;
+  --tag-bg: #eff2f5;
+  --tag-fg: #59636e;
+  --keep-bg: #dafbe1;
+  --keep-fg: #1a7f37;
+  --delete-bg: #ffe9e9;
+  --delete-fg: #c4271f;
+  --edit-bg: #fff8c5;
+  --edit-fg: #9a6700;
+  --stale-bg: #fbeed8;
+  --stale-fg: #b85d00;
+  --dup-bg: #e0d4f7;
+  --dup-fg: #5a3a9c;
+  --ok-bg: #d6f0e3;
+  --ok-fg: #1a7f37;
+  --unclear-bg: #e2e7ee;
+  --unclear-fg: #59636e;
+  --shadow: 0 1px 3px rgba(31,35,40,0.08);
+  --radius: 8px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fg: #e6edf3;
+    --fg-muted: #8b949e;
+    --fg-subtle: #6e7681;
+    --bg: #0d1117;
+    --bg-card: #161b22;
+    --bg-hover: #1c2128;
+    --border: #30363d;
+    --border-subtle: rgba(48, 54, 61, 0.5);
+    --accent: #58a6ff;
+    --accent-fg: #0d1117;
+    --tag-bg: #262c36;
+    --tag-fg: #8b949e;
+    --keep-bg: #033d1a;
+    --keep-fg: #3fb950;
+    --delete-bg: #4d1717;
+    --delete-fg: #ff7b72;
+    --edit-bg: #4d3800;
+    --edit-fg: #eac54f;
+    --stale-bg: #5a3a14;
+    --stale-fg: #ffa657;
+    --dup-bg: #3a2868;
+    --dup-fg: #d2a8ff;
+    --ok-bg: #1a3d28;
+    --ok-fg: #3fb950;
+    --unclear-bg: #30363d;
+    --unclear-fg: #8b949e;
+    --shadow: 0 1px 3px rgba(0,0,0,0.4);
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", system-ui, sans-serif;
+  color: var(--fg);
+  background: var(--bg);
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 20px 24px 80px;
+}
+.mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+h1 { font-size: 20px; font-weight: 600; margin: 0 0 6px; }
+.scope { color: var(--fg-muted); font-size: 12px; margin-bottom: 16px; word-break: break-all; }
+.toolbar {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--bg);
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+  margin-bottom: 14px;
+}
+.btn {
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  border-radius: 6px;
+  color: var(--fg);
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  transition: all 0.1s;
+}
+.btn:hover { background: var(--bg-hover); }
+.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.btn.primary:hover { filter: brightness(0.95); }
+.btn.danger:hover { color: var(--delete-fg); border-color: var(--delete-fg); }
+.summary { color: var(--fg-muted); font-size: 12px; margin-left: auto; }
+.file-block {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  margin-bottom: 18px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.file-header {
+  padding: 12px 16px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 10px;
+}
+.file-header .label { font-weight: 600; font-size: 14px; }
+.file-header .count { color: var(--fg-subtle); font-size: 11px; }
+.section-block { padding: 6px 0; }
+.section-title {
+  padding: 8px 16px 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--fg-muted);
+  font-weight: 600;
+  border-top: 1px dashed var(--border-subtle);
+}
+.section-block:first-of-type .section-title { border-top: none; }
+.entry {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border-subtle);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: start;
+}
+.entry:first-of-type { border-top: none; }
+.entry.placeholder .text { color: var(--fg-subtle); font-style: italic; }
+.entry.action-delete { background: var(--delete-bg); }
+.entry.action-edit { background: var(--edit-bg); }
+.entry .text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 13px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  line-height: 1.55;
+}
+.hint {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.hint.STALE { background: var(--stale-bg); color: var(--stale-fg); }
+.hint.DUP { background: var(--dup-bg); color: var(--dup-fg); }
+.hint.OK { background: var(--ok-bg); color: var(--ok-fg); }
+.hint.UNCLEAR { background: var(--unclear-bg); color: var(--unclear-fg); }
+.hint-reason {
+  display: block;
+  color: var(--fg-muted);
+  font-size: 11px;
+  margin-top: 4px;
+  font-style: italic;
+}
+.actions { display: flex; gap: 4px; flex-wrap: wrap; }
+.actions button {
+  padding: 4px 9px;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--fg-muted);
+  transition: all 0.1s;
+}
+.actions button:hover { background: var(--bg-hover); color: var(--fg); }
+.actions button.active.keep { background: var(--keep-bg); color: var(--keep-fg); border-color: var(--keep-fg); }
+.actions button.active.delete { background: var(--delete-bg); color: var(--delete-fg); border-color: var(--delete-fg); }
+.actions button.active.edit { background: var(--edit-bg); color: var(--edit-fg); border-color: var(--edit-fg); }
+.editor {
+  grid-column: 1 / -1;
+  margin-top: 8px;
+  width: 100%;
+  min-height: 80px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-card);
+  color: var(--fg);
+  font-size: 12px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  resize: vertical;
+}
+.editor:focus { outline: none; border-color: var(--accent); }
+.notes {
+  margin-top: 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+}
+.notes label { font-size: 12px; color: var(--fg-muted); display: block; margin-bottom: 6px; font-weight: 600; }
+.notes textarea {
+  width: 100%; min-height: 70px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 13px;
+  resize: vertical;
+}
+.notes textarea:focus { outline: none; border-color: var(--accent); }
+.guide {
+  font-size: 12px;
+  color: var(--fg-muted);
+  margin-top: 22px;
+  padding: 12px 16px;
+  background: var(--bg-card);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  line-height: 1.7;
+}
+.guide code { font-family: ui-monospace, monospace; background: var(--tag-bg); padding: 1px 5px; border-radius: 3px; font-size: 11.5px; }
+</style>
+</head>
+<body>
+
+<h1>dev-assets tidy review</h1>
+<p class="scope mono" id="scope-label">__SCOPE_LABEL_PLACEHOLDER__</p>
+
+<div class="toolbar">
+  <button class="btn" onclick="bulkSet('keep')">全部 keep</button>
+  <button class="btn" onclick="bulkSet('delete')">全部 delete</button>
+  <button class="btn" onclick="bulkApplyHintSuggested()">按 hint 建议（STALE/DUP→delete）</button>
+  <button class="btn primary" onclick="exportPlan()">导出 plan.json</button>
+  <span class="summary" id="summary"></span>
+</div>
+
+<div id="files"></div>
+
+<div class="notes">
+  <label for="notes">备注（可选，留给 agent 看）</label>
+  <textarea id="notes" placeholder="比如：这次我重点清了 v1 残留；XX 那条我改写了原因；下次 tidy 该看下 progress.md 那段..."></textarea>
+</div>
+
+<div class="guide">
+  <strong>使用说明</strong><br>
+  · 每条 entry 三个动作：<code>keep</code>（保留）/ <code>delete</code>（删除）/ <code>edit</code>（改写）<br>
+  · 选 <code>edit</code> 会展开 textarea；改完留在那里就行，导出时会带上<br>
+  · agent 标的 hint（<span class="hint STALE">STALE</span> <span class="hint DUP">DUP</span> <span class="hint OK">OK</span> <span class="hint UNCLEAR">UNCLEAR</span>）只是参考，你可以推翻<br>
+  · 点"导出 plan.json" → 文件下载到 Downloads → 告诉 agent 路径，它会读取并应用 + 自动备份原文件
+</div>
+
+<script>
+"use strict";
+
+const TIDY_DATA = __TIDY_DATA_PLACEHOLDER__;
+const state = {};  // entry_id -> {action, new_text}
+const allIds = [];
+
+function entryId(fileKey, secIdx, entryIdx) {
+  return fileKey + "::" + secIdx + "::" + entryIdx;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function render() {
+  const root = document.getElementById("files");
+  root.innerHTML = "";
+  for (const f of TIDY_DATA.files) {
+    const fb = document.createElement("div");
+    fb.className = "file-block";
+    let entryCount = 0;
+    for (const s of f.sections) entryCount += s.entries.length;
+    fb.innerHTML = `
+      <div class="file-header">
+        <span class="label mono">${escapeHtml(f.label)}</span>
+        <span class="count">${entryCount} 条</span>
+      </div>
+    `;
+    for (const s of f.sections) {
+      const sb = document.createElement("div");
+      sb.className = "section-block";
+      sb.innerHTML = `<div class="section-title">${escapeHtml(s.title)}</div>`;
+      for (const e of s.entries) {
+        const id = entryId(f.file_key, s.section_idx, e.entry_idx);
+        if (!state[id]) state[id] = { action: "keep", new_text: null };
+        if (!allIds.includes(id)) allIds.push(id);
+        const hint = (TIDY_DATA.hints || {})[id];
+        const hintHtml = hint && hint.label
+          ? `<span class="hint ${hint.label}">${hint.label}</span>${hint.reason ? `<span class="hint-reason">${escapeHtml(hint.reason)}</span>` : ""}`
+          : "";
+        const entryDiv = document.createElement("div");
+        entryDiv.className = "entry" + (e.is_placeholder ? " placeholder" : "");
+        entryDiv.dataset.id = id;
+        entryDiv.innerHTML = `
+          <div>
+            ${hintHtml}
+            <div class="text">${escapeHtml(e.text)}</div>
+          </div>
+          <div class="actions" data-id="${id}">
+            <button data-act="keep" onclick="setAction('${id}', 'keep')">keep</button>
+            <button data-act="delete" onclick="setAction('${id}', 'delete')">delete</button>
+            <button data-act="edit" onclick="setAction('${id}', 'edit')">edit</button>
+          </div>
+        `;
+        sb.appendChild(entryDiv);
+      }
+      fb.appendChild(sb);
+    }
+    root.appendChild(fb);
+  }
+  for (const id of allIds) refreshEntryUi(id);
+  refreshSummary();
+}
+
+function refreshEntryUi(id) {
+  const cur = state[id];
+  const entryDiv = document.querySelector(`.entry[data-id="${id}"]`);
+  if (!entryDiv) return;
+  entryDiv.classList.remove("action-delete", "action-edit");
+  if (cur.action === "delete") entryDiv.classList.add("action-delete");
+  if (cur.action === "edit") entryDiv.classList.add("action-edit");
+  for (const btn of entryDiv.querySelectorAll(".actions button")) {
+    btn.classList.toggle("active", btn.dataset.act === cur.action);
+    btn.classList.toggle(btn.dataset.act, btn.dataset.act === cur.action);
+  }
+  let editor = entryDiv.querySelector("textarea.editor");
+  if (cur.action === "edit") {
+    if (!editor) {
+      editor = document.createElement("textarea");
+      editor.className = "editor";
+      editor.placeholder = "改写后的内容（保留为单条 entry；多行会作为续行）";
+      const initial = cur.new_text != null ? cur.new_text : (entryDiv.querySelector(".text").textContent || "");
+      editor.value = initial;
+      editor.oninput = () => { state[id].new_text = editor.value; };
+      entryDiv.appendChild(editor);
+      state[id].new_text = editor.value;
+    }
+  } else if (editor) {
+    editor.remove();
+    state[id].new_text = null;
+  }
+}
+
+function setAction(id, act) {
+  state[id].action = act;
+  refreshEntryUi(id);
+  refreshSummary();
+}
+
+function bulkSet(act) {
+  for (const id of allIds) state[id].action = act;
+  for (const id of allIds) refreshEntryUi(id);
+  refreshSummary();
+}
+
+function bulkApplyHintSuggested() {
+  const hints = TIDY_DATA.hints || {};
+  for (const id of allIds) {
+    const h = hints[id];
+    if (h && (h.label === "STALE" || h.label === "DUP")) state[id].action = "delete";
+    else if (h && h.label === "OK") state[id].action = "keep";
+  }
+  for (const id of allIds) refreshEntryUi(id);
+  refreshSummary();
+}
+
+function refreshSummary() {
+  let k = 0, d = 0, e = 0;
+  for (const id of allIds) {
+    const a = state[id].action;
+    if (a === "keep") k++;
+    else if (a === "delete") d++;
+    else if (a === "edit") e++;
+  }
+  document.getElementById("summary").textContent =
+    `共 ${allIds.length} 条 · keep ${k} · delete ${d} · edit ${e}`;
+}
+
+function exportPlan() {
+  const actions = [];
+  for (const id of allIds) {
+    const a = state[id];
+    if (a.action === "keep") continue;  // omit keeps to keep plan.json compact
+    const entry = { id: id, action: a.action };
+    if (a.action === "edit") entry.new_text = a.new_text || "";
+    actions.push(entry);
+  }
+  const plan = {
+    tidy_id: TIDY_DATA.scope.generated_at,
+    scope: { include_repo: !!TIDY_DATA.scope.include_repo },
+    actions: actions,
+    notes: document.getElementById("notes").value || "",
+  };
+  const blob = new Blob([JSON.stringify(plan, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `tidy_plan_${TIDY_DATA.scope.generated_at}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+render();
+</script>
+</body>
+</html>
