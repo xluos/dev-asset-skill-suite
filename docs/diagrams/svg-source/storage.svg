@@ -1,0 +1,272 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 920" width="1400" height="920">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fafbfc"/>
+      <stop offset="100%" stop-color="#eef2f7"/>
+    </linearGradient>
+    <linearGradient id="header-grad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#475569"/>
+    </linearGradient>
+    <linearGradient id="repo-shelf" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ecfeff"/>
+      <stop offset="100%" stop-color="#e0f2fe"/>
+    </linearGradient>
+    <linearGradient id="branch-shelf" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f0fdf4"/>
+      <stop offset="100%" stop-color="#dcfce7"/>
+    </linearGradient>
+    <linearGradient id="archived-shelf" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#e2e8f0"/>
+    </linearGradient>
+
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="4"/>
+      <feOffset dx="0" dy="3"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.18"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <filter id="soft-shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+      <feOffset dx="0" dy="1"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.12"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <marker id="arr-up" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#7c3aed"/>
+    </marker>
+  </defs>
+
+  <rect width="1400" height="920" fill="url(#bg)"/>
+
+  <!-- Header -->
+  <rect x="40" y="30" width="1320" height="74" rx="14" fill="url(#header-grad)" filter="url(#shadow)"/>
+  <text x="70" y="68" font-size="22" font-weight="700" fill="#f8fafc">Storage Layout</text>
+  <text x="70" y="92" font-size="13" fill="#cbd5e1">repo + branch 双层 · v2 八件套 · graduate 上提 + _archived 归档</text>
+  <text x="1330" y="68" font-size="14" fill="#a5b4fc" text-anchor="end" font-family="ui-monospace,monospace">~/.dev-memory/repos/&lt;repo-key&gt;/</text>
+  <text x="1330" y="92" font-size="11" fill="#64748b" text-anchor="end" font-family="ui-monospace,monospace">repo-key = sanitize(name)-sha1(identity)[:12]</text>
+
+  <!-- Path breadcrumb -->
+  <g transform="translate(70, 130)">
+    <rect x="0" y="0" width="1260" height="40" rx="8" fill="white" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="20" y="26" font-size="13" font-family="ui-monospace,monospace" fill="#0f172a">~/.dev-memory/</text>
+    <text x="156" y="26" font-size="13" font-family="ui-monospace,monospace" fill="#7c3aed" font-weight="700">repos/</text>
+    <text x="220" y="26" font-size="13" font-family="ui-monospace,monospace" fill="#0891b2" font-weight="700">&lt;repo-key&gt;/</text>
+    <text x="370" y="26" font-size="11" fill="#94a3b8">  ← 一台机器上一个 repo 一份，按身份哈希定位</text>
+  </g>
+
+  <!-- ============== REPO/ shelf (left) ============== -->
+  <g transform="translate(70, 200)">
+    <!-- container -->
+    <rect x="0" y="0" width="380" height="640" rx="14" fill="url(#repo-shelf)" stroke="#0891b2" stroke-width="2" filter="url(#shadow)"/>
+
+    <!-- header bar -->
+    <rect x="0" y="0" width="380" height="64" rx="14" fill="#0891b2"/>
+    <rect x="0" y="50" width="380" height="14" fill="#0891b2"/>
+    <text x="22" y="38" font-size="20" font-weight="700" fill="white">📁 repo/</text>
+    <text x="120" y="38" font-size="12" fill="#cffafe" font-weight="600">跨分支共享层</text>
+    <text x="22" y="56" font-size="11" fill="#a5f3fc">长期稳定结论 · 跨分支通用 · graduate 上提目标</text>
+
+    <!-- file chips -->
+    <g transform="translate(20, 92)">
+      <!-- manifest.json -->
+      <rect x="0" y="0" width="340" height="58" rx="8" fill="white" stroke="#94a3b8" stroke-width="1" filter="url(#soft-shadow)"/>
+      <rect x="0" y="0" width="5" height="58" rx="2.5" fill="#64748b"/>
+      <text x="20" y="22" font-size="13" font-weight="700" font-family="ui-monospace,monospace" fill="#0f172a">manifest.json</text>
+      <text x="20" y="44" font-size="11" fill="#475569">仓库元信息 · 跨分支共享 · 标识 / 路径 / 时间戳</text>
+
+      <!-- overview.md -->
+      <rect x="0" y="74" width="340" height="58" rx="8" fill="white" stroke="#94a3b8" stroke-width="1" filter="url(#soft-shadow)"/>
+      <rect x="0" y="74" width="5" height="58" rx="2.5" fill="#64748b"/>
+      <text x="20" y="96" font-size="13" font-weight="700" font-family="ui-monospace,monospace" fill="#0f172a">overview.md</text>
+      <text x="20" y="118" font-size="11" fill="#475569">仓库长期目标 · 范围边界 · 关键约束</text>
+
+      <!-- decisions.md -->
+      <rect x="0" y="148" width="340" height="58" rx="8" fill="white" stroke="#06b6d4" stroke-width="1.5" filter="url(#soft-shadow)"/>
+      <rect x="0" y="148" width="5" height="58" rx="2.5" fill="#06b6d4"/>
+      <text x="20" y="170" font-size="13" font-weight="700" font-family="ui-monospace,monospace" fill="#0e7490">decisions.md</text>
+      <text x="20" y="192" font-size="11" fill="#475569">跨分支稳定决策 · why 与影响</text>
+
+      <!-- glossary.md -->
+      <rect x="0" y="222" width="340" height="58" rx="8" fill="white" stroke="#06b6d4" stroke-width="1.5" filter="url(#soft-shadow)"/>
+      <rect x="0" y="222" width="5" height="58" rx="2.5" fill="#06b6d4"/>
+      <text x="20" y="244" font-size="13" font-weight="700" font-family="ui-monospace,monospace" fill="#0e7490">glossary.md</text>
+      <text x="20" y="266" font-size="11" fill="#475569">仓库术语表 · 概念锚点 · 命名约定</text>
+
+      <!-- artifacts/ -->
+      <rect x="0" y="296" width="340" height="58" rx="8" fill="white" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,3" filter="url(#soft-shadow)"/>
+      <rect x="0" y="296" width="5" height="58" rx="2.5" fill="#94a3b8"/>
+      <text x="20" y="318" font-size="13" font-weight="700" font-family="ui-monospace,monospace" fill="#475569">📁 artifacts/</text>
+      <text x="20" y="340" font-size="11" fill="#64748b">长期产物 · 文档导出 · 大文件附件</text>
+
+      <!-- legend at bottom of repo shelf -->
+      <g transform="translate(0, 400)">
+        <rect x="0" y="0" width="340" height="100" rx="8" fill="#cffafe" opacity="0.5"/>
+        <text x="14" y="22" font-size="11" font-weight="700" fill="#0e7490">写入路径</text>
+        <text x="14" y="42" font-size="10" fill="#475569">capture record --kind X · 默认本分支</text>
+        <text x="14" y="58" font-size="10" fill="#475569">graduate dry-run/apply · 从 pending 上提</text>
+        <text x="14" y="78" font-size="10" fill="#94a3b8" font-style="italic">不是同步，是用户显式判断后挑出的稳定结论</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ============== BRANCHES/ shelf (right) ============== -->
+  <g transform="translate(490, 200)">
+    <!-- container -->
+    <rect x="0" y="0" width="840" height="640" rx="14" fill="url(#branch-shelf)" stroke="#10b981" stroke-width="2" filter="url(#shadow)"/>
+
+    <!-- header bar -->
+    <rect x="0" y="0" width="840" height="64" rx="14" fill="#10b981"/>
+    <rect x="0" y="50" width="840" height="14" fill="#10b981"/>
+    <text x="22" y="38" font-size="20" font-weight="700" fill="white">📁 branches/</text>
+    <text x="180" y="38" font-size="12" fill="#d1fae5" font-weight="600">分支级工作记忆</text>
+    <text x="22" y="56" font-size="11" fill="#a7f3d0">默认主上下文 · per-branch 隔离 · capture 主写入目标</text>
+
+    <!-- ===== ACTIVE BRANCH ===== -->
+    <g transform="translate(20, 92)">
+      <rect x="0" y="0" width="800" height="328" rx="10" fill="white" stroke="#10b981" stroke-width="2" filter="url(#soft-shadow)"/>
+
+      <!-- ribbon -->
+      <rect x="0" y="0" width="800" height="42" rx="10" fill="#dcfce7"/>
+      <rect x="0" y="32" width="800" height="10" fill="#dcfce7"/>
+      <circle cx="22" cy="21" r="6" fill="#10b981"/>
+      <circle cx="22" cy="21" r="3" fill="white"/>
+      <text x="40" y="26" font-size="14" font-weight="700" font-family="ui-monospace,monospace" fill="#047857">📁 &lt;branch-key&gt;/</text>
+      <text x="220" y="26" font-size="11" fill="#059669" font-weight="600">active · per-branch 工作态</text>
+      <text x="780" y="26" font-size="10" fill="#94a3b8" text-anchor="end" font-style="italic">cold-start tiered lookup 默认主源</text>
+
+      <!-- 8 file chips in 2 rows × 4 cols + 1 row × 1 (artifacts) -->
+      <!-- row 1 -->
+      <g transform="translate(20, 60)">
+        <!-- manifest -->
+        <rect x="0" y="0" width="180" height="46" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1"/>
+        <rect x="0" y="0" width="4" height="46" rx="2" fill="#64748b"/>
+        <text x="14" y="20" font-size="11" font-weight="700" font-family="ui-monospace,monospace" fill="#0f172a">manifest.json</text>
+        <text x="14" y="36" font-size="9" fill="#64748b">分支元信息 + setup_completed</text>
+
+        <!-- overview -->
+        <rect x="200" y="0" width="180" height="46" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1"/>
+        <rect x="200" y="0" width="4" height="46" rx="2" fill="#64748b"/>
+        <text x="214" y="20" font-size="11" font-weight="700" font-family="ui-monospace,monospace" fill="#0f172a">overview.md</text>
+        <text x="214" y="36" font-size="9" fill="#64748b">分支冷启动摘要 · 目标 / 阶段</text>
+
+        <!-- progress -->
+        <rect x="400" y="0" width="180" height="46" rx="6" fill="#ecfdf5" stroke="#10b981" stroke-width="1.2"/>
+        <rect x="400" y="0" width="4" height="46" rx="2" fill="#10b981"/>
+        <text x="414" y="20" font-size="11" font-weight="700" font-family="ui-monospace,monospace" fill="#047857">progress.md</text>
+        <text x="414" y="36" font-size="9" fill="#475569">当前进展 · 阻塞 · 下一步</text>
+
+        <!-- risks -->
+        <rect x="600" y="0" width="180" height="46" rx="6" fill="#fef2f2" stroke="#ef4444" stroke-width="1.2"/>
+        <rect x="600" y="0" width="4" height="46" rx="2" fill="#ef4444"/>
+        <text x="614" y="20" font-size="11" font-weight="700" font-family="ui-monospace,monospace" fill="#b91c1c">risks.md</text>
+        <text x="614" y="36" font-size="9" fill="#475569">阻塞 / 注意点 · 待解决项</text>
+      </g>
+
+      <!-- row 2 -->
+      <g transform="translate(20, 122)">
+        <!-- decisions -->
+        <rect x="0" y="0" width="180" height="46" rx="6" fill="#ecfeff" stroke="#06b6d4" stroke-width="1.2"/>
+        <rect x="0" y="0" width="4" height="46" rx="2" fill="#06b6d4"/>
+        <text x="14" y="20" font-size="11" font-weight="700" font-family="ui-monospace,monospace" fill="#0e7490">decisions.md</text>
+        <text x="14" y="36" font-size="9" fill="#475569">分支级决策 · why &amp; 影响</text>
+
+        <!-- glossary -->
+        <rect x="200" y="0" width="180" height="46" rx="6" fill="#ecfeff" stroke="#06b6d4" stroke-width="1.2"/>
+        <rect x="200" y="0" width="4" height="46" rx="2" fill="#06b6d4"/>
+        <text x="214" y="20" font-size="11" font-weight="700" font-family="ui-monospace,monospace" fill="#0e7490">glossary.md</text>
+        <text x="214" y="36" font-size="9" fill="#475569">分支术语 · 链接 · 引用入口</text>
+
+        <!-- unsorted -->
+        <rect x="400" y="0" width="180" height="46" rx="6" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.2"/>
+        <rect x="400" y="0" width="4" height="46" rx="2" fill="#f59e0b"/>
+        <text x="414" y="20" font-size="11" font-weight="700" font-family="ui-monospace,monospace" fill="#b45309">unsorted.md</text>
+        <text x="414" y="36" font-size="9" fill="#475569">heuristic 兜底 · 待 setup 分类</text>
+
+        <!-- pending-promotion -->
+        <rect x="600" y="0" width="180" height="46" rx="6" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.2"/>
+        <rect x="600" y="0" width="4" height="46" rx="2" fill="#7c3aed"/>
+        <text x="614" y="20" font-size="11" font-weight="700" font-family="ui-monospace,monospace" fill="#6d28d9">pending-promotion</text>
+        <text x="614" y="36" font-size="9" fill="#475569">跨分支候选 · graduate staging</text>
+      </g>
+
+      <!-- row 3 (artifacts/history full width) -->
+      <g transform="translate(20, 184)">
+        <rect x="0" y="0" width="380" height="46" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,3"/>
+        <rect x="0" y="0" width="4" height="46" rx="2" fill="#94a3b8"/>
+        <text x="14" y="20" font-size="11" font-weight="700" font-family="ui-monospace,monospace" fill="#475569">📁 artifacts/</text>
+        <text x="14" y="36" font-size="9" fill="#64748b">分支产物 · capture 注入 · 大文件不进 md</text>
+
+        <rect x="400" y="0" width="380" height="46" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,3"/>
+        <rect x="400" y="0" width="4" height="46" rx="2" fill="#94a3b8"/>
+        <text x="414" y="20" font-size="11" font-weight="700" font-family="ui-monospace,monospace" fill="#475569">📁 artifacts/history/</text>
+        <text x="414" y="36" font-size="9" fill="#64748b">capture 写入快照 · per-call 历史</text>
+      </g>
+
+      <!-- color legend bar -->
+      <g transform="translate(20, 252)">
+        <text x="0" y="14" font-size="10" font-weight="700" fill="#475569" letter-spacing="1">分类色：</text>
+        <rect x="56" y="4" width="12" height="12" rx="2" fill="#10b981"/>
+        <text x="74" y="14" font-size="10" fill="#475569">进展</text>
+        <rect x="116" y="4" width="12" height="12" rx="2" fill="#ef4444"/>
+        <text x="134" y="14" font-size="10" fill="#475569">阻塞</text>
+        <rect x="174" y="4" width="12" height="12" rx="2" fill="#06b6d4"/>
+        <text x="192" y="14" font-size="10" fill="#475569">长期沉淀</text>
+        <rect x="252" y="4" width="12" height="12" rx="2" fill="#f59e0b"/>
+        <text x="270" y="14" font-size="10" fill="#475569">heuristic 兜底</text>
+        <rect x="356" y="4" width="12" height="12" rx="2" fill="#7c3aed"/>
+        <text x="374" y="14" font-size="10" fill="#475569">跨分支 staging</text>
+        <rect x="476" y="4" width="12" height="12" rx="2" fill="#64748b"/>
+        <text x="494" y="14" font-size="10" fill="#475569">索引 / 元信息</text>
+
+        <!-- file count badge -->
+        <rect x="640" y="-2" width="140" height="22" rx="11" fill="white" stroke="#10b981" stroke-width="1"/>
+        <text x="710" y="13" font-size="10" font-weight="700" fill="#047857" text-anchor="middle">v2 · 八件套 + 2 dirs</text>
+      </g>
+    </g>
+
+    <!-- ===== ARCHIVED ===== -->
+    <g transform="translate(20, 442)">
+      <rect x="0" y="0" width="800" height="180" rx="10" fill="url(#archived-shelf)" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6,4" filter="url(#soft-shadow)"/>
+
+      <!-- ribbon -->
+      <rect x="0" y="0" width="800" height="38" rx="10" fill="#e2e8f0" opacity="0.8"/>
+      <rect x="0" y="28" width="800" height="10" fill="#e2e8f0" opacity="0.8"/>
+      <text x="22" y="24" font-size="14" font-weight="700" font-family="ui-monospace,monospace" fill="#475569">📁 _archived/</text>
+      <text x="220" y="24" font-size="11" fill="#64748b" font-weight="600">已归档分支</text>
+      <text x="780" y="24" font-size="10" fill="#94a3b8" text-anchor="end" font-style="italic">graduate 落地后只读</text>
+
+      <!-- archived cards -->
+      <g transform="translate(20, 56)">
+        <rect x="0" y="0" width="240" height="50" rx="6" fill="white" opacity="0.7" stroke="#cbd5e1" stroke-width="1"/>
+        <text x="14" y="22" font-size="11" font-weight="600" font-family="ui-monospace,monospace" fill="#475569">feat__rename-to-dev-memory/</text>
+        <text x="14" y="40" font-size="9" fill="#94a3b8">归档于 2026-04-28 · merged</text>
+
+        <rect x="260" y="0" width="240" height="50" rx="6" fill="white" opacity="0.7" stroke="#cbd5e1" stroke-width="1"/>
+        <text x="274" y="22" font-size="11" font-weight="600" font-family="ui-monospace,monospace" fill="#475569">feat__capture-hook/</text>
+        <text x="274" y="40" font-size="9" fill="#94a3b8">归档于 2026-04-15 · graduated</text>
+
+        <rect x="520" y="0" width="240" height="50" rx="6" fill="white" opacity="0.7" stroke="#cbd5e1" stroke-width="1"/>
+        <text x="534" y="22" font-size="11" font-weight="600" font-family="ui-monospace,monospace" fill="#475569">v1__bootstrap/</text>
+        <text x="534" y="40" font-size="9" fill="#94a3b8">归档于 2026-03-08 · stale</text>
+      </g>
+
+      <text x="20" y="138" font-size="10" fill="#64748b">索引文件由 graduate index 维护：archived 分支何时归档、其 promotion 是否已上提到 repo/</text>
+      <text x="20" y="156" font-size="10" fill="#94a3b8" font-style="italic">不再写入 · capture 不会落到这里 · 只读历史 promotion 入口</text>
+    </g>
+  </g>
+
+  <!-- promotion arrow: pending-promotion → repo/ -->
+  <polyline points="1124,344 1124,180 250,180 250,300" fill="none" stroke="#7c3aed" stroke-width="2" marker-end="url(#arr-up)" opacity="0.55"/>
+  <rect x="600" y="160" width="200" height="32" rx="16" fill="white" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="700" y="180" font-size="11" font-weight="700" fill="#6d28d9" text-anchor="middle">graduate 上提</text>
+
+  <!-- footer note -->
+  <g transform="translate(70, 880)">
+    <text x="0" y="0" font-size="11" fill="#64748b">▸ 主存储在 <tspan font-family="ui-monospace,monospace" fill="#0f172a" font-weight="600">$HOME</tspan> 而不是仓库里：不污染工作区，跨 worktree / 跨设备各管各</text>
+    <text x="0" y="20" font-size="11" fill="#64748b">▸ <tspan font-family="ui-monospace,monospace" fill="#0f172a" font-weight="600">repo-key</tspan> = 仓库名 + identity 哈希前 12 位（默认拉 git origin URL，no-git 模式拉 .dev-memory-id 文件）</text>
+  </g>
+</svg>
