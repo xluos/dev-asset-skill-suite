@@ -1,10 +1,10 @@
 # Workspace Mode Design
 
-Add a multi-repo mode to dev-assets: when cwd is not a git repo but contains git repos in first-level subdirectories, treat cwd as a workspace and operate on all repos within it. Single-repo behavior is unchanged.
+Add a multi-repo mode to dev-memory: when cwd is not a git repo but contains git repos in first-level subdirectories, treat cwd as a workspace and operate on all repos within it. Single-repo behavior is unchanged.
 
 ## Motivation
 
-Tools like agentara host an LLM session whose cwd is a "workspace" directory containing several cloned repos. The agent reads/edits across these repos in one session. Today, dev-assets hooks fail at workspace cwd because `git` commands return no repo and storage paths can't be derived.
+Tools like agentara host an LLM session whose cwd is a "workspace" directory containing several cloned repos. The agent reads/edits across these repos in one session. Today, dev-memory hooks fail at workspace cwd because `git` commands return no repo and storage paths can't be derived.
 
 ## Goals
 
@@ -22,7 +22,7 @@ Tools like agentara host an LLM session whose cwd is a "workspace" directory con
 
 ## Detection
 
-Add to `lib/dev_asset_common.py` (siblings of existing `detect_repo_root`, lines 58–59):
+Add to `lib/dev_memory_common.py` (siblings of existing `detect_repo_root`, lines 58–59):
 
 ```python
 def detect_workspace_mode(cwd: Path | None = None) -> bool:
@@ -37,7 +37,7 @@ def list_repos_in_workspace(cwd: Path | None = None) -> list[Path]:
 Detection rules:
 
 - `cwd/.git` exists (dir or file) → return False (existing single-repo mode wins)
-- `cwd` has zero first-level subdirs with `.git` → return False (dev-assets no-ops, as today for non-repo cwd)
+- `cwd` has zero first-level subdirs with `.git` → return False (dev-memory no-ops, as today for non-repo cwd)
 - Otherwise → True
 
 `.git` may be a directory (regular repo) or a file (worktree pointer). Both count.
@@ -114,7 +114,7 @@ Mirror the iteration pattern. Both are Claude-only hooks (no Codex equivalent), 
 
 ## Skill / CLI Behavior
 
-### `dev-assets-sync` (CLI: `dev-assets record-session`)
+### `dev-memory-sync` (CLI: `dev-memory record-session`)
 
 Add optional `--repo <basename>` flag:
 
@@ -126,26 +126,26 @@ Add optional `--repo <basename>` flag:
 
 `SKILL.md` updated: in workspace mode, the LLM should pass `--repo <basename>` to disambiguate. Default-to-primary is the convenience path.
 
-### `dev-assets-context` (CLI: `dev-assets recover-context`)
+### `dev-memory-context` (CLI: `dev-memory recover-context`)
 
 Add `--repo <basename>` for explicit cross-repo loading mid-session. Useful when LLM realizes it needs full memory for a non-primary repo.
 
-### `dev-assets-update` (CLI: `dev-assets update-section`)
+### `dev-memory-update` (CLI: `dev-memory update-section`)
 
 Add `--repo <basename>`. Same disambiguation rules as sync.
 
-### `dev-assets-setup` (CLI: `dev-assets init`)
+### `dev-memory-setup` (CLI: `dev-memory init`)
 
 Workspace mode + no `--repo`: refuse with message `"workspace mode: setup must target a single repo, pass --repo <basename> for one of: a, b, c"`. Per-repo init is intentional — each repo's first-time setup is a deliberate user decision.
 
 ## CLI dispatch
 
-`bin/dev-assets.js` (Node entry point) gains `--repo` parsing for the four subcommands above. Workspace-mode detection itself is internal to Python — Node just forwards env + args.
+`bin/dev-memory.js` (Node entry point) gains `--repo` parsing for the four subcommands above. Workspace-mode detection itself is internal to Python — Node just forwards env + args.
 
 ## Storage Layout (unchanged)
 
 ```
-~/.dev-assets/
+~/.dev-memory/
   repos/
     <repo-key>/
       repo/
@@ -160,7 +160,7 @@ No new config files. Behavior is fully controlled by:
 
 - Whether cwd is a git repo (auto-detected)
 - `DEV_ASSETS_PRIMARY_REPO` / `DEV_ASSETS_PRIMARY_BRANCH` env vars (optional, hint only)
-- Existing `DEV_ASSETS_ROOT` env var or git config `dev-assets.root` (storage location, unchanged)
+- Existing `DEV_ASSETS_ROOT` env var or git config `dev-memory.root` (storage location, unchanged)
 
 ## Codex Compatibility
 
@@ -173,7 +173,7 @@ Confirmed via `hooks/codex-hooks.json` (lines 3–31):
 | PreCompact | ✅ | ❌ | yes (Claude only) |
 | SessionEnd | ✅ | ❌ | yes (Claude only) |
 
-Heavy write (`dev-assets-sync` skill) is LLM-driven CLI invocation — both runners can call it identically. Codex is fully supported in workspace mode for read + write; only PreCompact / SessionEnd refinements are Claude-exclusive (and unrelated to multi-repo correctness).
+Heavy write (`dev-memory-sync` skill) is LLM-driven CLI invocation — both runners can call it identically. Codex is fully supported in workspace mode for read + write; only PreCompact / SessionEnd refinements are Claude-exclusive (and unrelated to multi-repo correctness).
 
 ## Backwards Compatibility
 
@@ -187,17 +187,17 @@ Heavy write (`dev-assets-sync` skill) is LLM-driven CLI invocation — both runn
 
 | File | Change | Lines |
 |------|--------|-------|
-| `lib/dev_asset_common.py` | Add `detect_workspace_mode`, `list_repos_in_workspace`, `get_all_branch_paths` | ~50 |
+| `lib/dev_memory_common.py` | Add `detect_workspace_mode`, `list_repos_in_workspace`, `get_all_branch_paths` | ~50 |
 | `scripts/hooks/_common.py` | Add `build_context_for_repo(repo_path, full)`, `record_head_for_repo(repo_path)` | ~40 |
 | `scripts/hooks/session_start.py` | Workspace branch | ~15 |
 | `scripts/hooks/stop.py` | Workspace branch | ~10 |
 | `scripts/hooks/pre_compact.py` | Workspace branch | ~10 |
 | `scripts/hooks/session_end.py` | Workspace branch | ~10 |
-| `bin/dev-assets.js` | `--repo` parsing for sync / context / update / init | ~20 |
-| `skills/dev-assets-sync/SKILL.md` | Document `--repo` in workspace mode | docs |
-| `skills/dev-assets-context/SKILL.md` | Same | docs |
-| `skills/dev-assets-update/SKILL.md` | Same | docs |
-| `skills/dev-assets-setup/SKILL.md` | Note per-repo setup requirement | docs |
+| `bin/dev-memory.js` | `--repo` parsing for sync / context / update / init | ~20 |
+| `skills/dev-memory-sync/SKILL.md` | Document `--repo` in workspace mode | docs |
+| `skills/dev-memory-context/SKILL.md` | Same | docs |
+| `skills/dev-memory-update/SKILL.md` | Same | docs |
+| `skills/dev-memory-setup/SKILL.md` | Note per-repo setup requirement | docs |
 | `README.md` | "Workspace Mode" section | docs |
 | `AGENTS.md` | Brief mention in lifecycle table | docs |
 
@@ -205,18 +205,18 @@ Total: ~150 lines of code + docs.
 
 ## Implementation Order
 
-1. `lib/dev_asset_common.py` — three new functions + unit tests
+1. `lib/dev_memory_common.py` — three new functions + unit tests
 2. `scripts/hooks/_common.py` — extract per-repo helpers from existing single-repo logic
 3. `scripts/hooks/session_start.py` — most user-visible change, validate end-to-end first
 4. `scripts/hooks/stop.py`
 5. `scripts/hooks/pre_compact.py`, `session_end.py` (Claude-only)
-6. CLI `--repo` flag wiring in `bin/dev-assets.js`
+6. CLI `--repo` flag wiring in `bin/dev-memory.js`
 7. SKILL.md doc updates (sync, context, update, setup)
 8. README "Workspace Mode" section + AGENTS.md mention
 
 ## Open Questions
 
-- **`dev-assets-setup` in workspace mode without `--repo`**: refuse and instruct user, or auto-init all? Proposal: refuse. First-time setup is per-repo by intent.
+- **`dev-memory-setup` in workspace mode without `--repo`**: refuse and instruct user, or auto-init all? Proposal: refuse. First-time setup is per-repo by intent.
 - **HEAD recording for inactive repos in `Stop`**: skip if no recent commits, or always overwrite the manifest HEAD field? Proposal: always overwrite — it's a single timestamp + SHA, cheap and idempotent.
 - **`DEV_ASSETS_PRIMARY_REPO` value form**: basename vs absolute path? Proposal: basename, matches the user-facing `--repo` flag and is robust to renames of the workspace dir.
 - **Detection cost on large workspaces**: `os.scandir()` over first-level subdirs is O(N) and called per hook invocation. If N grows large (>100 repos), cache or limit. Proposal: defer until measured.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Using Dev Memory"
+  short_description: "Git 仓库开发对话的入口路由，先判断是否进入分支记忆套件"
+  default_prompt: "Use $using-dev-memory at the start of Git-repository development work to decide whether to route into dev-memory-context, dev-memory-setup, dev-memory-capture, or dev-memory-graduate first."

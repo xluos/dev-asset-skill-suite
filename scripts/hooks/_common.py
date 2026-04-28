@@ -9,12 +9,16 @@ from pathlib import Path
 
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[2]
-REPO_ROOT = Path(os.environ.get("DEV_ASSETS_HOOK_REPO_ROOT", ".")).expanduser().resolve()
+REPO_ROOT = Path(
+    os.environ.get("DEV_MEMORY_HOOK_REPO_ROOT")
+    or os.environ.get("DEV_ASSETS_HOOK_REPO_ROOT")
+    or "."
+).expanduser().resolve()
 LIB_ROOT = PACKAGE_ROOT / "lib"
 if str(LIB_ROOT) not in sys.path:
     sys.path.insert(0, str(LIB_ROOT))
 
-from dev_asset_common import (
+from dev_memory_common import (
     AUTO_END,
     AUTO_START,
     PLACEHOLDER_MARKERS,
@@ -26,10 +30,10 @@ from dev_asset_common import (
 )
 
 
-CONTEXT_SCRIPT = PACKAGE_ROOT / "skills" / "dev-assets-context" / "scripts" / "dev_asset_context.py"
+CONTEXT_SCRIPT = PACKAGE_ROOT / "skills" / "dev-memory-context" / "scripts" / "dev_memory_context.py"
 # v2: sync/update merged into capture. All auto-block refresh and
 # record-head calls now go through the capture script.
-CAPTURE_SCRIPT = PACKAGE_ROOT / "skills" / "dev-assets-capture" / "scripts" / "dev_asset_capture.py"
+CAPTURE_SCRIPT = PACKAGE_ROOT / "skills" / "dev-memory-capture" / "scripts" / "dev_memory_capture.py"
 
 
 def run_python(script_path, *args, cwd=None):
@@ -84,7 +88,10 @@ def list_workspace_repos():
 
 def primary_repo_name():
     """Basename of the focus repo from env; None if unset."""
-    value = os.environ.get("DEV_ASSETS_PRIMARY_REPO", "").strip()
+    value = (
+        os.environ.get("DEV_MEMORY_PRIMARY_REPO", "").strip()
+        or os.environ.get("DEV_ASSETS_PRIMARY_REPO", "").strip()
+    )
     return value or None
 
 
@@ -214,8 +221,8 @@ def _build_context_from_assets(assets, *, full=True, heading=None):
         # write has happened yet — no need to push setup.
         if heading is None:
             return (
-                "当前仓库+分支还没有 dev-assets 记忆。"
-                "下一次 `dev-assets-capture` 写入时会自动 lazy init；现有结论若值得记一笔，直接走 capture。"
+                "当前仓库+分支还没有 dev-memory 记忆。"
+                "下一次 `dev-memory-capture` 写入时会自动 lazy init；现有结论若值得记一笔，直接走 capture。"
             )
         return None
 
@@ -228,9 +235,9 @@ def _build_context_from_assets(assets, *, full=True, heading=None):
     no_git = assets.get("branch_name") is None
     if heading is None:
         if no_git:
-            parts.append("已加载 dev-assets（no-git 模式）。")
+            parts.append("已加载 dev-memory（no-git 模式）。")
         else:
-            parts.append(f"已加载 dev-assets（分支 `{assets['branch_name']}`）。")
+            parts.append(f"已加载 dev-memory（分支 `{assets['branch_name']}`）。")
     else:
         parts.append(heading)
     for title, body in sections:
@@ -246,7 +253,7 @@ def _build_context_from_assets(assets, *, full=True, heading=None):
         repo_root = assets.get("repo_root")
         repo_name = repo_root.name if hasattr(repo_root, "name") else "<repo>"
         parts.append(
-            f"_brief 摘要。本 repo 完整记忆 → `dev-assets-context show --repo {repo_name}`_"
+            f"_brief 摘要。本 repo 完整记忆 → `dev-memory-context show --repo {repo_name}`_"
         )
 
     return "\n\n".join(parts)
@@ -260,7 +267,7 @@ def build_session_start_context():
         try:
             maybe_sync_context()
         except Exception as exc:
-            log(f"[dev-assets][SessionStart] refresh skipped: {exc}")
+            log(f"[dev-memory][SessionStart] refresh skipped: {exc}")
     return _build_context_from_assets(assets, full=True)
 
 
@@ -271,12 +278,12 @@ def build_context_for_repo(repo_path, *, full=True, is_primary=False):
     try:
         assets = resolve_assets_for(repo_path)
     except Exception as exc:
-        log(f"[dev-assets] resolve failed for {Path(repo_path).name}: {exc}")
+        log(f"[dev-memory] resolve failed for {Path(repo_path).name}: {exc}")
         return None
     try:
         sync_context_for(repo_path)
     except Exception as exc:
-        log(f"[dev-assets] context sync skipped for {Path(repo_path).name}: {exc}")
+        log(f"[dev-memory] context sync skipped for {Path(repo_path).name}: {exc}")
     tag = "[PRIMARY] " if is_primary else ""
     heading = (
         f"## {tag}`{Path(repo_path).name}` @ branch `{assets['branch_name']}`"
@@ -288,7 +295,7 @@ def build_workspace_start_context():
     """SessionStart context for workspace mode. Primary repo gets full memory;
     others get a brief overview only. Returns None if no initialized repos.
 
-    Fallback when DEV_ASSETS_PRIMARY_REPO is unset:
+    Fallback when DEV_MEMORY_PRIMARY_REPO is unset:
       - Single-repo workspace → that repo is full (user's intent is obvious).
       - Multi-repo workspace  → all brief, so N full dumps can't drown the
         session. Header tells the agent how to promote one to full.
@@ -316,7 +323,7 @@ def build_workspace_start_context():
     if not sections:
         return None
     header_parts = [
-        f"已加载 dev-assets workspace 模式：共 {len(repos)} 个仓库 @ `{REPO_ROOT}`"
+        f"已加载 dev-memory workspace 模式：共 {len(repos)} 个仓库 @ `{REPO_ROOT}`"
     ]
     if primary:
         status = "命中" if primary_hit else "未在 workspace 中找到"
@@ -324,7 +331,7 @@ def build_workspace_start_context():
     if has_brief:
         header_parts.append(
             "_其它仓库按 brief 摘要注入。聚焦某个仓库做实质工作前，"
-            "调用 `dev-assets-context` skill（或 `dev-assets-context show --repo <name>`）"
+            "调用 `dev-memory-context` skill（或 `dev-memory-context show --repo <name>`）"
             "加载完整记忆。_"
         )
     header = "\n".join(header_parts)
@@ -340,16 +347,16 @@ def record_head_all_repos():
         try:
             assets = resolve_assets_for(repo_path)
             if not assets["branch_dir"].exists():
-                log(f"[dev-assets] {repo_path.name}: branch memory not initialized, skip")
+                log(f"[dev-memory] {repo_path.name}: branch memory not initialized, skip")
                 continue
             payload = record_head_for(repo_path)
             log(
-                f"[dev-assets] {repo_path.name}: recorded HEAD "
+                f"[dev-memory] {repo_path.name}: recorded HEAD "
                 f"{payload.get('last_seen_head')} for {payload.get('branch')}"
             )
             results.append((repo_path.name, payload))
         except Exception as exc:
-            log(f"[dev-assets] {repo_path.name}: record-head skipped: {exc}")
+            log(f"[dev-memory] {repo_path.name}: record-head skipped: {exc}")
     return results
 
 
@@ -360,14 +367,14 @@ def sync_working_tree_all_repos():
         try:
             assets = resolve_assets_for(repo_path)
             if not assets["branch_dir"].exists():
-                log(f"[dev-assets] {repo_path.name}: branch memory not initialized, skip")
+                log(f"[dev-memory] {repo_path.name}: branch memory not initialized, skip")
                 continue
             payload = sync_working_tree_for(repo_path)
             log(
-                f"[dev-assets] {repo_path.name}: refreshed working-tree navigation for "
+                f"[dev-memory] {repo_path.name}: refreshed working-tree navigation for "
                 f"{payload.get('branch')} ({payload.get('files_considered')} files)"
             )
             results.append((repo_path.name, payload))
         except Exception as exc:
-            log(f"[dev-assets] {repo_path.name}: working-tree sync skipped: {exc}")
+            log(f"[dev-memory] {repo_path.name}: working-tree sync skipped: {exc}")
     return results

@@ -13,21 +13,21 @@ from _common import (
 def main():
     try:
         if is_no_git_mode():
-            log("[dev-assets][Stop] no-git mode: nothing to record (no HEAD)")
+            log("[dev-memory][Stop] no-git mode: nothing to record (no HEAD)")
             return 0
         if is_workspace_mode():
             results = record_head_all_repos()
             if not results:
-                log("[dev-assets][Stop] workspace mode: no initialized repos recorded")
+                log("[dev-memory][Stop] workspace mode: no initialized repos recorded")
             return 0
         assets = resolve_assets()
         if not assets["branch_dir"].exists():
-            log("[dev-assets][Stop] branch memory not initialized, skip")
+            log("[dev-memory][Stop] branch memory not initialized, skip")
             return 0
         payload = maybe_record_head()
-        log(f"[dev-assets][Stop] recorded HEAD {payload['last_seen_head']} for {payload['branch']}")
+        log(f"[dev-memory][Stop] recorded HEAD {payload['last_seen_head']} for {payload['branch']}")
     except Exception as exc:
-        log(f"[dev-assets][Stop] skipped: {exc}")
+        log(f"[dev-memory][Stop] skipped: {exc}")
     return 0
 
 

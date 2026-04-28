@@ -1,4 +1,4 @@
-# Dev Assets Skill Suite
+# Dev Memory Skill Suite
 
 面向 Codex、Claude 等 agent 运行时的 **repo + branch 双层开发记忆** 技能套件。
 
@@ -8,20 +8,20 @@
 
 ## v2 架构：6 个 Skill
 
-v2 把旧的 sync + update 合并成统一的 capture，整套从 6 个旧 skill 降到 5 个，同时改 setup 为 merge 动作、加 lazy init、加 v1→v2 自动迁移。后来补了一个 `dev-assets-tidy` 作为定期校准入口（已结构化记忆漂移时用），现在套件 6 个 skill。
+v2 把旧的 sync + update 合并成统一的 capture，整套从 6 个旧 skill 降到 5 个，同时改 setup 为 merge 动作、加 lazy init、加 v1→v2 自动迁移。后来补了一个 `dev-memory-tidy` 作为定期校准入口（已结构化记忆漂移时用），现在套件 6 个 skill。
 
 | Skill | 定位 | 典型触发 |
 | --- | --- | --- |
-| `using-dev-assets` | 总入口路由器，决定走哪个子 skill | 任何 Git 仓库 / no-git 项目开发对话开头 |
-| `dev-assets-setup` | 整理 unsorted.md + 补元信息 + 标 setup_completed（不再是前置门禁） | unsorted.md 累积、用户明确说"整理一下" |
-| `dev-assets-context` | 恢复当前分支记忆，按 tiered lookup 顺序读 | 继续已有分支开发 |
-| `dev-assets-capture` | **统一写入入口**（合并 sync + update） | 本轮产生稳定结论 / checkpoint / 用户手动记一笔 / 改写旧条目 |
-| `dev-assets-tidy` | **定期校准入口**：已结构化条目漂移时（陈旧 / 重复 / 模板残留），agent 聚合 proposal → 浏览器审 → apply 落盘 + 自动备份 | 用户说"整理一下记忆 / 清下过期的 / 看看哪些还成立" |
-| `dev-assets-graduate` | 分支收尾：从 pending-promotion 提炼上提 + 归档 branch | 用户显式说"归档 / 分支收尾 / merge 完清一下" |
+| `using-dev-memory` | 总入口路由器，决定走哪个子 skill | 任何 Git 仓库 / no-git 项目开发对话开头 |
+| `dev-memory-setup` | 整理 unsorted.md + 补元信息 + 标 setup_completed（不再是前置门禁） | unsorted.md 累积、用户明确说"整理一下" |
+| `dev-memory-context` | 恢复当前分支记忆，按 tiered lookup 顺序读 | 继续已有分支开发 |
+| `dev-memory-capture` | **统一写入入口**（合并 sync + update） | 本轮产生稳定结论 / checkpoint / 用户手动记一笔 / 改写旧条目 |
+| `dev-memory-tidy` | **定期校准入口**：已结构化条目漂移时（陈旧 / 重复 / 模板残留），agent 聚合 proposal → 浏览器审 → apply 落盘 + 自动备份 | 用户说"整理一下记忆 / 清下过期的 / 看看哪些还成立" |
+| `dev-memory-graduate` | 分支收尾：从 pending-promotion 提炼上提 + 归档 branch | 用户显式说"归档 / 分支收尾 / merge 完清一下" |
 
 详细设计与语义见：
 
-- [docs/dev-assets-skill-suite-guide.md](docs/dev-assets-skill-suite-guide.md) — 套件整体说明
+- [docs/dev-memory-skill-suite-guide.md](docs/dev-memory-skill-suite-guide.md) — 套件整体说明
 - [docs/workspace-mode.md](docs/workspace-mode.md) — 多 repo workspace 模式
 
 ### Lazy init 与 setup 的新关系
@@ -56,7 +56,7 @@ Capture 有三种写入模式：
 
 ### Graduate 为什么必须显式
 
-`dev-assets-graduate` 会做 destructive move（把 `branches/<key>/` 搬到 `branches/_archived/<key>__<date>/`），同时把 branch 记忆里跨分支可复用的知识（剥离业务命名后）上提到 repo 共享层。**只接受用户显式触发**，不做 implicit 调用。在 no-git 模式下直接拒绝（没有分支概念）。Tidy 同样要求显式触发（用户主动说"整理"），不做 implicit。
+`dev-memory-graduate` 会做 destructive move（把 `branches/<key>/` 搬到 `branches/_archived/<key>__<date>/`），同时把 branch 记忆里跨分支可复用的知识（剥离业务命名后）上提到 repo 共享层。**只接受用户显式触发**，不做 implicit 调用。在 no-git 模式下直接拒绝（没有分支概念）。Tidy 同样要求显式触发（用户主动说"整理"），不做 implicit。
 
 ## 运行模式
 
@@ -66,7 +66,7 @@ Capture 有三种写入模式：
 | --- | --- | --- |
 | 单 repo | cwd 本身是 git 仓库 | 最原始行为，所有 hook/skill 直接作用于当前 repo+branch |
 | Workspace | cwd 不是 git 仓库，但第一级子目录里至少有一个 git 仓库 | SessionStart 为 primary 仓库注入完整记忆 + 其它仓库简短概览；Stop/PreCompact/SessionEnd 对每个仓库各记一次 HEAD；skill 通过 `--repo <basename>` 明确目标仓库，或读 `DEV_ASSETS_PRIMARY_REPO` 作为默认 |
-| No-git | cwd 不是 git 仓库，也不是 workspace | 在当前目录落一个 `.dev-assets-id` dotfile 作为仓库身份，分支层退化成单一共享层（sentinel `_no_git`），`dev-assets-graduate` 此模式下直接拒绝 |
+| No-git | cwd 不是 git 仓库，也不是 workspace | 在当前目录落一个 `.dev-memory-id` dotfile 作为仓库身份，分支层退化成单一共享层（sentinel `_no_git`），`dev-memory-graduate` 此模式下直接拒绝 |
 
 `DEV_ASSETS_PRIMARY_REPO` 接受**仓库目录 basename**（不是绝对路径）。
 
@@ -77,7 +77,7 @@ Capture 有三种写入模式：
 ![v2 存储布局](docs/diagrams/storage.png)
 
 ```text
-~/.dev-assets/repos/<repo-key>/
+~/.dev-memory/repos/<repo-key>/
   repo/                           # 跨分支共享层
     overview.md                   # 长期目标 + 约束
     decisions.md                  # 跨分支通用决策
@@ -107,7 +107,7 @@ Capture 有三种写入模式：
 **其他关键点：**
 
 - `repo-key`：优先按仓库 remote 身份派生，不只看目录名；支持多 clone / worktree 共享同一套记忆
-- `DEV_ASSETS_ROOT`：覆盖默认 `~/.dev-assets/repos`；CLI、所有 hook 脚本、所有 skill 脚本都尊重此环境变量
+- `DEV_ASSETS_ROOT`：覆盖默认 `~/.dev-memory/repos`；CLI、所有 hook 脚本、所有 skill 脚本都尊重此环境变量
 - v1 → v2 迁移在第一次 capture/context 时自动触发，老的 `development.md` / `context.md` / `sources.md` 按 section 切分进 v2 对应文件后删除（单用户离线清理，不保留 .legacy）
 
 ## 安装
@@ -117,63 +117,63 @@ Capture 有三种写入模式：
 列出可用 skill：
 
 ```bash
-npx skills add xluos/dev-assets-skill-suite --list
+npx skills add xluos/dev-memory-skill-suite --list
 ```
 
 全量装到 Codex 全局：
 
 ```bash
-npx skills add xluos/dev-assets-skill-suite --skill '*' -a codex -g -y
+npx skills add xluos/dev-memory-skill-suite --skill '*' -a codex -g -y
 ```
 
 为检测到的所有 agent 装一遍：
 
 ```bash
-npx skills add xluos/dev-assets-skill-suite --all -g -y
+npx skills add xluos/dev-memory-skill-suite --all -g -y
 ```
 
 ### 2. 安装生命周期 hook
 
-推荐先把 `@xluos/dev-assets-cli` 装成全局命令，再在目标仓库合并 hook：
+推荐先把 `@xluos/dev-memory-cli` 装成全局命令，再在目标仓库合并 hook：
 
 ```bash
-npm install -g @xluos/dev-assets-cli                 # 一次
-dev-assets install-hooks codex                       # 在目标仓库内（默认 cwd）
-dev-assets install-hooks claude
+npm install -g @xluos/dev-memory-cli                 # 一次
+dev-memory install-hooks codex                       # 在目标仓库内（默认 cwd）
+dev-memory install-hooks claude
 ```
 
 装到 agent 用户级配置而不是每个 repo：
 
 ```bash
-dev-assets install-hooks codex --global              # 写入 ~/.codex/hooks.json
-dev-assets install-hooks claude --global             # 写入 ~/.claude/settings.json
+dev-memory install-hooks codex --global              # 写入 ~/.codex/hooks.json
+dev-memory install-hooks claude --global             # 写入 ~/.claude/settings.json
 ```
 
 用 `--all` 一次装两种 agent：
 
 ```bash
-dev-assets install-hooks --all                       # 两个 agent，repo 级
-dev-assets install-hooks --all --global              # 两个 agent，用户级
+dev-memory install-hooks --all                       # 两个 agent，repo 级
+dev-memory install-hooks --all --global              # 两个 agent，用户级
 ```
 
 没装全局 CLI 时，也可以 `npx` 按需下载：
 
 ```bash
-npx -y @xluos/dev-assets-cli install-hooks codex
-npx -y @xluos/dev-assets-cli install-hooks claude --global
+npx -y @xluos/dev-memory-cli install-hooks codex
+npx -y @xluos/dev-memory-cli install-hooks claude --global
 ```
 
 Shell 包装器（`scripts/install_codex_hooks.sh`、`scripts/install_claude_hooks.sh`）只是上面命令的 shell 入口，适合偏好 shell 的环境。
 
 ### 3. 浏览已存储的记忆（可选）
 
-装完 CLI 后，可以用 `dev-assets ui` 起一个本地浏览器界面，查看 `~/.dev-assets/repos/` 下所有 `(仓库, 分支)` 的记忆文件：
+装完 CLI 后，可以用 `dev-memory ui` 起一个本地浏览器界面，查看 `~/.dev-memory/repos/` 下所有 `(仓库, 分支)` 的记忆文件：
 
 ```bash
-dev-assets ui                      # 随机端口 + 自动打开浏览器
-dev-assets ui --port 7878          # 固定端口
-dev-assets ui --no-open            # 只起服务，不开浏览器
-dev-assets ui --read-only          # 禁用编辑回写
+dev-memory ui                      # 随机端口 + 自动打开浏览器
+dev-memory ui --port 7878          # 固定端口
+dev-memory ui --no-open            # 只起服务，不开浏览器
+dev-memory ui --read-only          # 禁用编辑回写
 ```
 
 界面提供：
@@ -183,7 +183,7 @@ dev-assets ui --read-only          # 禁用编辑回写
 - 卡片内 md 文件会渲染为 heading / 列表 / 代码块等，预览区过长会截断并提供"展开全部"弹窗
 - 弹窗内可点"编辑"直接修改 `.md` / `.json` 并保存（`Cmd/Ctrl+S` 保存，`Esc` 取消）；写入仅限存储目录内已存在的文件，`.json` 会先做语法校验再原子落盘
 
-默认绑定 `127.0.0.1`，仅本机可访问。需要彻底禁用写入时加 `--read-only`。没装全局 CLI 时同样可以 `npx -y @xluos/dev-assets-cli ui`。
+默认绑定 `127.0.0.1`，仅本机可访问。需要彻底禁用写入时加 `--read-only`。没装全局 CLI 时同样可以 `npx -y @xluos/dev-memory-cli ui`。
 
 ## 生命周期 Hook
 
@@ -199,29 +199,29 @@ dev-assets ui --read-only          # 禁用编辑回写
 重要边界：
 
 - 本仓库只提供**模板 + CLI**，真正生效的是你本地 `.codex/hooks.json` / `.claude/settings.local.json` / `~/.codex/hooks.json` / `~/.claude/settings.json` 里有没有合并进来
-- hook 运行时统一走 `dev-assets hook ...`，所以 CLI 必须在 PATH 上或可被 `npx` 解析
+- hook 运行时统一走 `dev-memory hook ...`，所以 CLI 必须在 PATH 上或可被 `npx` 解析
 - hook 只做**低摩擦恢复 + 轻量刷新**，不在 hook 里重写高语义正文
 - 全局 skill 安装不会自动加载 hook —— 这是一个 skill suite，不是独立 agent 插件
 
 ## CLI 入口
 
-从 0.10.0 开始所有 skill 的执行逻辑都搬到 `lib/` 下，由 `dev-assets` CLI 统一暴露成嵌套子命令。SKILL.md 里写的命令也从早期的 `python3 /absolute/path/to/<skill>/scripts/<name>.py` 改成 `npx dev-assets <skill> <subcommand>`。这套架构有两个好处：
+从 0.10.0 开始所有 skill 的执行逻辑都搬到 `lib/` 下，由 `dev-memory` CLI 统一暴露成嵌套子命令。SKILL.md 里写的命令也从早期的 `python3 /absolute/path/to/<skill>/scripts/<name>.py` 改成 `npx dev-memory <skill> <subcommand>`。这套架构有两个好处：
 
 1. `npx skills add` 把 skill 装到 `~/.claude/skills/<skill>/` 后，`SKILL.md` 调用的命令仍能解析（CLI 是 npm 包提供的，不依赖 skill 的物理位置）
-2. 共享 helper（`dev_asset_common.py`）只在 npm 包里有一份，没有副本漂移问题
+2. 共享 helper（`dev_memory_common.py`）只在 npm 包里有一份，没有副本漂移问题
 
 CLI 暴露的子命令：
 
 | 类别 | 命令 | 用途 |
 |---|---|---|
-| Hook（自动触发，别手动调）| `dev-assets hook <session-start\|pre-compact\|stop\|session-end>` | 由 `.codex/hooks.json` / `.claude/settings.local.json` 自动调用 |
-| 安装助手 | `dev-assets install-hooks <codex\|claude\|--all>` | 把 hook 模板合并到目标配置 |
-| 浏览器 UI | `dev-assets ui [--port N] [--read-only]` | 启动本地浏览器界面看/编辑记忆 |
-| Skill 工作流（agent 在 SKILL.md 里调用，也能手动跑）| `dev-assets context <show\|sync\|...>` | 读分支记忆 |
-| | `dev-assets capture <record\|show\|suggest-kind\|...>` | 统一写入入口 |
-| | `dev-assets setup <init\|merge-unsorted\|mark-completed>` | 整理 unsorted |
-| | `dev-assets tidy <prepare\|apply>` | 浏览器化的批量 review + 落盘 |
-| | `dev-assets graduate <dry-run\|apply\|index>` | 分支归档 + 跨分支知识上提 |
+| Hook（自动触发，别手动调）| `dev-memory hook <session-start\|pre-compact\|stop\|session-end>` | 由 `.codex/hooks.json` / `.claude/settings.local.json` 自动调用 |
+| 安装助手 | `dev-memory install-hooks <codex\|claude\|--all>` | 把 hook 模板合并到目标配置 |
+| 浏览器 UI | `dev-memory ui [--port N] [--read-only]` | 启动本地浏览器界面看/编辑记忆 |
+| Skill 工作流（agent 在 SKILL.md 里调用，也能手动跑）| `dev-memory context <show\|sync\|...>` | 读分支记忆 |
+| | `dev-memory capture <record\|show\|suggest-kind\|...>` | 统一写入入口 |
+| | `dev-memory setup <init\|merge-unsorted\|mark-completed>` | 整理 unsorted |
+| | `dev-memory tidy <prepare\|apply>` | 浏览器化的批量 review + 落盘 |
+| | `dev-memory graduate <dry-run\|apply\|index>` | 分支归档 + 跨分支知识上提 |
 
 子命令的 sub-subcommand 和参数由 Python 端 argparse 拥有，CLI 只透传 argv。
 
@@ -229,33 +229,33 @@ CLI 暴露的子命令：
 
 ```text
 bin/
-  dev-assets.js              # `npx dev-assets` CLI 入口（嵌套子命令 dispatch）
+  dev-memory.js              # `npx dev-memory` CLI 入口（嵌套子命令 dispatch）
 hooks/
   hooks.json                 # Claude hook 模板（.claude/settings.local.json）
   codex-hooks.json           # Codex hook 模板（.codex/hooks.json）
   README.md
 lib/                         # 所有 Python 业务逻辑都集中在这里（npm 包发布时随包带）
-  dev_asset_common.py        # 共享公共库（path 解析、template、git facts、merge helpers ...）
-  dev_asset_context.py       # `dev-assets context` 子命令实现
-  dev_asset_capture.py       # `dev-assets capture` 子命令实现
-  dev_asset_setup.py         # `dev-assets setup` 子命令实现
-  dev_asset_tidy.py          # `dev-assets tidy` 子命令实现
-  dev_asset_graduate.py      # `dev-assets graduate` 子命令实现
-  ui-server.js / ui-app.html # `dev-assets ui` 浏览器界面（含编辑回写）
+  dev_memory_common.py        # 共享公共库（path 解析、template、git facts、merge helpers ...）
+  dev_memory_context.py       # `dev-memory context` 子命令实现
+  dev_memory_capture.py       # `dev-memory capture` 子命令实现
+  dev_memory_setup.py         # `dev-memory setup` 子命令实现
+  dev_memory_tidy.py          # `dev-memory tidy` 子命令实现
+  dev_memory_graduate.py      # `dev-memory graduate` 子命令实现
+  ui-server.js / ui-app.html # `dev-memory ui` 浏览器界面（含编辑回写）
   assets/tidy_review.html    # tidy prepare 渲染的浏览器审阅页模板
 scripts/
-  hooks/                     # session_start / pre_compact / stop / session_end — 通过 `dev-assets hook ...` 调用
+  hooks/                     # session_start / pre_compact / stop / session_end — 通过 `dev-memory hook ...` 调用
   install_codex_hooks.sh     # 一键安装 shell 入口；install_claude_hooks.sh 是它的 symlink
   install_claude_hooks.sh -> install_codex_hooks.sh
   install_suite.py           # 本地开发用的 symlink 安装器
   npm/                       # 打包 check/build 助手
 skills/                      # SKILL.md + agents/openai.yaml + references/ 三件套；不再带 scripts/
-  using-dev-assets/
-  dev-assets-setup/
-  dev-assets-context/
-  dev-assets-capture/
-  dev-assets-tidy/
-  dev-assets-graduate/
+  using-dev-memory/
+  dev-memory-setup/
+  dev-memory-context/
+  dev-memory-capture/
+  dev-memory-tidy/
+  dev-memory-graduate/
 suite-manifest.json          # 套件 + 历史遗留 skill 命名的唯一表
 ```
 
@@ -268,12 +268,12 @@ skills/<skill-name>/
   references/*.md            # 辅助参考，仅在 SKILL.md 明确引用时读取（可选）
 ```
 
-实际可执行逻辑都在 `lib/dev_asset_<skill>.py` 里，由 `dev-assets <skill> <sub>` 子命令调用 —— 用户走 `npx skills add` 装到 `~/.claude/skills/<skill>/` 时也只需要 SKILL.md，不需要 scripts 副本。
+实际可执行逻辑都在 `lib/dev_memory_<skill>.py` 里，由 `dev-memory <skill> <sub>` 子命令调用 —— 用户走 `npx skills add` 装到 `~/.claude/skills/<skill>/` 时也只需要 SKILL.md，不需要 scripts 副本。
 
 ## 设计要点
 
 - **repo 层不是 branch 层的替代**：同仓库不同分支的目标、阶段、阻塞通常会分叉，所以 branch 记忆仍是主执行上下文，repo 是跨分支稳定背景
-- **Git 历史留在 Git**：做了什么、改了哪些文件、什么时候改的 —— 都优先看 `git log` / `git show`，不往 dev-assets 里复制提交流水账
+- **Git 历史留在 Git**：做了什么、改了哪些文件、什么时候改的 —— 都优先看 `git log` / `git show`，不往 dev-memory 里复制提交流水账
 - **共享资料入口放 repo 层**：评审文档、长期设计链接、跨分支规范入口放 `repo/glossary.md`；分支独占的热路径 / 优先阅读清单放 `branches/<branch>/glossary.md`
 - **hook 只保底，不主写**：高语义正文靠 `capture` / `graduate` 在对话里写，不依赖 hook 自动重写
 - **destructive 动作一律显式**：`graduate` 归档和 `tidy` 落盘都必须用户明确授权，不接受 implicit 触发；tidy apply 永远先备份整份 scope 到 `tidy_backup_<ts>/`
@@ -286,7 +286,7 @@ skills/<skill-name>/
 
 - 替代源文档系统
 - 长期保存完整会话流水账
-- 在 dev-assets 里复制提交历史
+- 在 dev-memory 里复制提交历史
 - 自动抓取外部链接正文或做全文归档
 - 自动理解图片、附件、录音等非文本资产
 

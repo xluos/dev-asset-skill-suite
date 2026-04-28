@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dev Memory Context"
+  short_description: "读取并刷新当前分支的开发记忆，恢复默认上下文入口"
+  default_prompt: "Use $dev-memory-context to orient the current branch's saved development memory, identify missing materials, and recover context before coding."

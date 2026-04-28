@@ -15,7 +15,7 @@
 主存储默认放在用户目录，而不是仓库里：
 
 ```text
-~/.dev-assets/repos/<repo-key>/
+~/.dev-memory/repos/<repo-key>/
   repo/
   branches/<branch>/
 ```
@@ -54,7 +54,7 @@
 
 ## Skill Boundaries
 
-### `dev-assets-context`
+### `dev-memory-context`
 
 - 主职责是恢复上下文，不是重建上下文。
 - 默认先读 branch `overview.md`、`development.md`、`context.md`。
@@ -63,12 +63,12 @@
 - 允许做轻量的 Git 导航刷新，例如 focus areas、scope summary、HEAD 元信息。
 - 不要重写语义记忆正文。
 
-### `dev-assets-sync`
+### `dev-memory-sync`
 
 - 触发时机默认是会话生命周期检查点或用户明确要求沉淀的节点，例如 `Stop`、`SessionEnd`、`PreCompact`、阶段性里程碑。
 - 主职责是沉淀“本次提交后仍然有价值的内容”，不是刷新整个分支状态。
 - 只关注本次这轮会话的 why / constraint / caveat / next-step / risk。
-- 不要把 commit history 复制到 dev-assets。
+- 不要把 commit history 复制到 dev-memory。
 - 不要在 `sync` 里做全局语义重建。
 - 只有在本次提交明确改变了分支整体目标 / 范围 / 阶段时，才允许触碰 branch `overview.md`。
 - 这套仓库不再依赖 Git hooks；默认的低摩擦保底机制是生命周期 hooks。
@@ -76,7 +76,7 @@
   - Claude: `.claude/settings.local.json` + `hooks/hooks.json`
   - Codex: `.codex/hooks.json` + `hooks/codex-hooks.json`
 
-### `dev-assets-update`
+### `dev-memory-update`
 
 - 用于补充或修正记忆，既可以由用户显式提出，也可以由 agent 隐式触发。
 - 允许隐式触发的典型场景只有两类：
@@ -93,11 +93,11 @@
   - `git log`
   - `git show`
   - `git diff`
-- dev-assets 只保留下一次继续工作时最需要知道的内容。
+- dev-memory 只保留下一次继续工作时最需要知道的内容。
 
 ## Writing Rules
 
 - 优先覆盖写当前状态，不要持续 append 同类历史。
-- 能从源文档低成本恢复的内容，不要在 dev-assets 里复制正文。
-- 能从 Git 历史低成本恢复的内容，不要在 dev-assets 里复制实现历史。
+- 能从源文档低成本恢复的内容，不要在 dev-memory 里复制正文。
+- 能从 Git 历史低成本恢复的内容，不要在 dev-memory 里复制实现历史。
 - 不要把 branch-specific 的当前工作态写进 repo 共享层。

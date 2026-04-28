@@ -4,15 +4,15 @@ flowchart TD
     USER[用户诉求]
   end
 
-  subgraph SUITE["dev-assets 套件（5 skill）"]
-    ROUTER[using-dev-assets<br/>路由]
-    CONTEXT[dev-assets-context<br/>读取 + tiered lookup]
-    CAPTURE[dev-assets-capture<br/>统一写入]
-    SETUP[dev-assets-setup<br/>unsorted 合并 promotion]
-    GRAD[dev-assets-graduate<br/>分支归档]
+  subgraph SUITE["dev-memory 套件（5 skill）"]
+    ROUTER[using-dev-memory<br/>路由]
+    CONTEXT[dev-memory-context<br/>读取 + tiered lookup]
+    CAPTURE[dev-memory-capture<br/>统一写入]
+    SETUP[dev-memory-setup<br/>unsorted 合并 promotion]
+    GRAD[dev-memory-graduate<br/>分支归档]
   end
 
-  subgraph MEM["~/.dev-assets/repos/"]
+  subgraph MEM["~/.dev-memory/repos/"]
     BRANCH[branches/current<br/>分支层 v2 八件套]
     SHARED[repo/<br/>共享层]
     ARCH[branches/_archived<br/>归档层]

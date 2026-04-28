@@ -7,11 +7,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx dev-assets hook session-start"
+            "command": "npx dev-memory hook session-start"
           }
         ],
-        "description": "Load repo+branch dev-assets context at session start",
-        "id": "dev-assets:session-start"
+        "description": "Load repo+branch dev-memory context at session start",
+        "id": "dev-memory:session-start"
       }
     ],
     "PreCompact": [
@@ -20,12 +20,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx dev-assets hook pre-compact",
+            "command": "npx dev-memory hook pre-compact",
             "timeout": 20
           }
         ],
         "description": "Refresh working-tree-derived navigation before compaction",
-        "id": "dev-assets:pre-compact"
+        "id": "dev-memory:pre-compact"
       }
     ],
     "Stop": [
@@ -34,12 +34,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx dev-assets hook stop",
+            "command": "npx dev-memory hook stop",
             "timeout": 15
           }
         ],
         "description": "Persist lightweight HEAD markers after each response",
-        "id": "dev-assets:stop"
+        "id": "dev-memory:stop"
       }
     ],
     "SessionEnd": [
@@ -48,12 +48,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "npx dev-assets hook session-end",
+            "command": "npx dev-memory hook session-end",
             "timeout": 15
           }
         ],
         "description": "Persist final HEAD marker at session end",
-        "id": "dev-assets:session-end"
+        "id": "dev-memory:session-end"
       }
     ]
   }

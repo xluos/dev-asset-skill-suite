@@ -1,12 +1,12 @@
 {
-  "suite_name": "dev-assets-skill-suite",
+  "suite_name": "dev-memory-skill-suite",
   "skills": [
-    "using-dev-assets",
-    "dev-assets-setup",
-    "dev-assets-context",
-    "dev-assets-capture",
-    "dev-assets-graduate",
-    "dev-assets-tidy"
+    "using-dev-memory",
+    "dev-memory-setup",
+    "dev-memory-context",
+    "dev-memory-capture",
+    "dev-memory-graduate",
+    "dev-memory-tidy"
   ],
   "legacy_skills": [
     "branch-context",
@@ -15,6 +15,12 @@
     "dev-asset-context",
     "dev-asset-sync",
     "dev-assets-sync",
-    "dev-assets-update"
+    "dev-assets-update",
+    "using-dev-assets",
+    "dev-assets-setup",
+    "dev-assets-context",
+    "dev-assets-capture",
+    "dev-assets-graduate",
+    "dev-assets-tidy"
   ]
 }

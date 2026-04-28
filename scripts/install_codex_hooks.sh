@@ -3,7 +3,7 @@
 set -eu
 
 REPO_ROOT="."
-PACKAGE_SPEC="@xluos/dev-assets-cli"
+PACKAGE_SPEC="@xluos/dev-memory-cli"
 AGENT="codex"
 GLOBAL=0
 ALL=0
@@ -42,10 +42,10 @@ while [ "$#" -gt 0 ]; do
 Usage: install_codex_hooks.sh [--repo PATH] [--package SPEC] [--agent codex|claude] [--global] [--all]
 
 Thin wrapper that merges hooks for the requested agent via
-`dev-assets install-hooks <agent> [--repo <repo>|--global]`.
+`dev-memory install-hooks <agent> [--repo <repo>|--global]`.
 
-Prefer installing the CLI globally once (e.g. `npm i -g @xluos/dev-assets-cli`)
-and then running `dev-assets install-hooks <agent>` directly; this script exists
+Prefer installing the CLI globally once (e.g. `npm i -g @xluos/dev-memory-cli`)
+and then running `dev-memory install-hooks <agent>` directly; this script exists
 for environments where a one-shot shell entry is easier.
 
 --global writes to the agent's user-level config (~/.codex/hooks.json or
@@ -85,11 +85,11 @@ else
   set -- "$@" --repo "$TARGET_REPO"
 fi
 
-if command -v dev-assets >/dev/null 2>&1; then
-  dev-assets "$@"
+if command -v dev-memory >/dev/null 2>&1; then
+  dev-memory "$@"
 else
   if ! command -v npx >/dev/null 2>&1; then
-    echo "ERROR: need either a globally installed 'dev-assets' or 'npx' on PATH" >&2
+    echo "ERROR: need either a globally installed 'dev-memory' or 'npx' on PATH" >&2
     exit 1
   fi
   npx -y "$PACKAGE_SPEC" "$@"

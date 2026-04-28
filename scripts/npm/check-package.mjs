@@ -28,16 +28,16 @@ function run(cmd, args, options = {}) {
 
 for (const relPath of [
   "package.json",
-  "bin/dev-assets.js",
+  "bin/dev-memory.js",
   "lib/ui-server.js",
   "lib/ui-app.html",
   "lib/assets/tidy_review.html",
-  "lib/dev_asset_common.py",
-  "lib/dev_asset_context.py",
-  "lib/dev_asset_capture.py",
-  "lib/dev_asset_setup.py",
-  "lib/dev_asset_graduate.py",
-  "lib/dev_asset_tidy.py",
+  "lib/dev_memory_common.py",
+  "lib/dev_memory_context.py",
+  "lib/dev_memory_capture.py",
+  "lib/dev_memory_setup.py",
+  "lib/dev_memory_graduate.py",
+  "lib/dev_memory_tidy.py",
   "hooks/hooks.json",
   "hooks/codex-hooks.json",
   "suite-manifest.json",
@@ -51,17 +51,17 @@ for (const relPath of [
   }
 }
 
-run("node", ["--check", "bin/dev-assets.js"]);
+run("node", ["--check", "bin/dev-memory.js"]);
 run("node", ["--check", "lib/ui-server.js"]);
 run("python3", [
   "-m",
   "py_compile",
-  "lib/dev_asset_common.py",
-  "lib/dev_asset_context.py",
-  "lib/dev_asset_capture.py",
-  "lib/dev_asset_setup.py",
-  "lib/dev_asset_graduate.py",
-  "lib/dev_asset_tidy.py",
+  "lib/dev_memory_common.py",
+  "lib/dev_memory_context.py",
+  "lib/dev_memory_capture.py",
+  "lib/dev_memory_setup.py",
+  "lib/dev_memory_graduate.py",
+  "lib/dev_memory_tidy.py",
   "scripts/hooks/_common.py",
   "scripts/hooks/session_start.py",
   "scripts/hooks/pre_compact.py",

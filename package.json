@@ -1,7 +1,7 @@
 {
-  "name": "@xluos/dev-assets-cli",
+  "name": "@xluos/dev-memory-cli",
   "version": "0.12.1",
-  "description": "CLI for dev-assets hooks and repo-local setup",
+  "description": "CLI for dev-memory hooks and repo-local setup (formerly @xluos/dev-assets-cli)",
   "license": "MIT",
   "scripts": {
     "check": "node scripts/npm/check-package.mjs",
@@ -12,10 +12,11 @@
     "prepublishOnly": "npm run check"
   },
   "bin": {
-    "dev-assets": "bin/dev-assets.js"
+    "dev-memory": "bin/dev-memory.js",
+    "dev-assets": "bin/dev-memory.js"
   },
   "files": [
-    "bin/dev-assets.js",
+    "bin/dev-memory.js",
     "hooks/*.json",
     "hooks/README.md",
     "lib/*.py",
