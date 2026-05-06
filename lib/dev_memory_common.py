@@ -49,7 +49,10 @@ MANAGED_FILES = (
 # is kept here so list_missing_docs() and other scanners can ignore them.
 LEGACY_V1_FILES = ("development.md", "context.md", "sources.md")
 
-FOCUS_PREFIXES = {"skills", "src", "apps", "packages", "services"}
+# Bottom-up clustering of changed-file paths into a small set of "focus
+# directories". The cluster never grows larger than this many entries; a
+# higher number gives finer granularity at the cost of a longer hint list.
+FOCUS_AREA_LIMIT = 5
 
 
 def now_iso():
@@ -1118,24 +1121,69 @@ def top_level_scope(path_str):
     return parts[0] if parts else "."
 
 
-def focus_area(path_str):
-    parts = Path(path_str).parts
-    if not parts:
-        return "."
-    if parts[0] in FOCUS_PREFIXES and len(parts) >= 2:
-        return f"{parts[0]}/{parts[1]}"
-    return parts[0]
-
-
 def summarize_scopes(paths):
     counter = Counter(top_level_scope(path) for path in paths)
     return [{"scope": scope, "files": count} for scope, count in sorted(counter.items())]
 
 
-def summarize_focus_areas(paths, limit=5):
-    counter = Counter(focus_area(path) for path in paths)
-    ranked = sorted(counter.items(), key=lambda item: (-item[1], item[0]))
-    return [scope for scope, _ in ranked[:limit]]
+def _initial_parent(path_str):
+    """File path → its immediate parent directory key. Files at repo root use
+    '.', everything else uses the POSIX-style parent dir string."""
+    parent = Path(path_str).parent
+    if str(parent) in ("", "."):
+        return "."
+    return parent.as_posix()
+
+
+def _can_roll_up(key):
+    """A bucket is rollable if its key is at depth ≥ 2 (so rolling up keeps it
+    above the repo root). 1-level keys like 'lib' or 'docs' are 'isolated
+    shallow' buckets — keep them as-is rather than collapse to '.'."""
+    if key in ("", "."):
+        return False
+    return len(Path(key).parts) >= 2
+
+
+def _rolled_up(key):
+    return Path(key).parent.as_posix()
+
+
+def summarize_focus_areas(paths, limit=None):
+    """Cluster changed-file paths into ≤ `limit` focus directories.
+
+    Algorithm (bottom-up): start with each file's immediate parent dir as a
+    bucket; while the bucket count exceeds `limit`, roll every roll-able
+    bucket up one level, find the rolled-up key with the largest summed
+    count (the "dominant cluster" — most files concentrated under a single
+    deeper subtree), and merge only those originals into it. Buckets that
+    were already at depth 1 or '.' are left untouched, so isolated shallow
+    directories survive. Tie-break: deeper rolled-up key wins, then
+    lexicographic.
+    """
+    if limit is None:
+        limit = FOCUS_AREA_LIMIT
+    buckets = Counter(_initial_parent(p) for p in paths)
+    while len(buckets) > limit:
+        proposals = {}  # rolled_key -> [sum_count, [original_keys...]]
+        for key, count in buckets.items():
+            if not _can_roll_up(key):
+                continue
+            new_key = _rolled_up(key)
+            entry = proposals.setdefault(new_key, [0, []])
+            entry[0] += count
+            entry[1].append(key)
+        if not proposals:
+            break
+        def score(item):
+            new_key, (sum_count, _) = item
+            depth = len(Path(new_key).parts) if new_key not in ("", ".") else 0
+            return (sum_count, depth, new_key)
+        winner_key, (winner_count, originals) = max(proposals.items(), key=score)
+        for k in originals:
+            buckets.pop(k)
+        buckets[winner_key] = buckets.get(winner_key, 0) + winner_count
+    ranked = sorted(buckets.items(), key=lambda kv: (-kv[1], kv[0]))
+    return [k for k, _ in ranked[:limit]]
 
 
 def collect_git_facts(repo_root, branch_name, _storage_root=None):
