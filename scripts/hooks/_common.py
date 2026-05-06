@@ -275,19 +275,18 @@ def _build_context_from_assets(assets, *, full=True, heading=None):
             )
         else:
             # Full-mode footer: counter the "context already injected ≡ context
-            # is exhaustive" cognitive bias. Even when nothing was truncated,
-            # the agent should still walk the using-dev-memory router on each
-            # turn — capture vs context vs graduate is a per-turn decision,
-            # not a one-shot SessionStart artifact.
+            # is exhaustive" cognitive bias. Drill-down + write-back are
+            # surfaced directly (no longer via a meta router skill — see
+            # using-dev-memory removal).
             truncation_note = (
                 "上文标注 `完整内容: <path>` 的段落已截断，需详情请直接 Read 该文件。"
                 if any_truncated
-                else "需进一步细节请通过 `dev-memory-context` skill 拉取完整文件。"
+                else "需进一步细节通过 `dev-memory-context` skill 或直接 Read 上面提到的分支文件拉取。"
             )
             parts.append(
                 "---\n"
                 "_以上为 SessionStart 自动注入的浓缩摘要（非完整记忆）。"
-                "进入开发讨论前仍走 `using-dev-memory` 路由判断本轮该不该 capture / context / graduate；"
+                "本轮产生新决策 / 进展 / 阻塞时走 `dev-memory-capture` 写入；"
                 f"{truncation_note}_"
             )
 

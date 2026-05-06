@@ -98,14 +98,7 @@
 
 ## 各 Skill 现在的职责
 
-### `using-dev-memory`
-
-总入口，只负责判断当前应该走哪条路：
-
-- 继续已有分支工作 → `dev-memory-context`
-- 新分支第一次开始 → `dev-memory-setup`
-- 当前记忆需要补充或纠正 → `dev-memory-update`
-- 到达提交相关检查点或阶段性里程碑 → `dev-memory-sync`
+> 0.16 起取消 `using-dev-memory` 路由总入口。SessionStart hook 注入已经把 AI 拉到 dev-memory 上下文，footer 直接指向 `dev-memory-context` / `dev-memory-capture`，不再需要一层 meta skill。各子 skill 自己的 description 承担触发判断。
 
 ### `dev-memory-setup`
 

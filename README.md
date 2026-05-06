@@ -8,14 +8,13 @@
 
 ## v2 架构：6 个 Skill
 
-v2 把旧的 sync + update 合并成统一的 capture，整套从 6 个旧 skill 降到 5 个，同时改 setup 为 merge 动作、加 lazy init、加 v1→v2 自动迁移。后来补了一个 `dev-memory-tidy` 作为定期校准入口（已结构化记忆漂移时用），现在套件 6 个 skill。
+v2 把旧的 sync + update 合并成统一的 capture，并把 setup 从前置门禁改为 merge 动作、加 lazy init、加 v1→v2 自动迁移。0.16 起取消 `using-dev-memory` 路由总入口（hooks 注入已经完成 AI 引导，不再需要一层 meta skill），各子 skill 自己的 description 承担触发。当前套件 5 个 skill。
 
 | Skill | 定位 | 典型触发 |
 | --- | --- | --- |
-| `using-dev-memory` | 总入口路由器，决定走哪个子 skill | 任何 Git 仓库 / no-git 项目开发对话开头 |
-| `dev-memory-setup` | 整理 unsorted.md + 补元信息 + 标 setup_completed（不再是前置门禁） | unsorted.md 累积、用户明确说"整理一下" |
 | `dev-memory-context` | 恢复当前分支记忆，按 tiered lookup 顺序读 | 继续已有分支开发 |
 | `dev-memory-capture` | **统一写入入口**（合并 sync + update） | 本轮产生稳定结论 / checkpoint / 用户手动记一笔 / 改写旧条目 |
+| `dev-memory-setup` | 整理 unsorted.md + 补元信息 + 标 setup_completed（不再是前置门禁） | unsorted.md 累积、用户明确说"整理一下" |
 | `dev-memory-tidy` | **定期校准入口**：已结构化条目漂移时（陈旧 / 重复 / 模板残留），agent 聚合 proposal → 浏览器审 → apply 落盘 + 自动备份 | 用户说"整理一下记忆 / 清下过期的 / 看看哪些还成立" |
 | `dev-memory-graduate` | 分支收尾：从 pending-promotion 提炼上提 + 归档 branch | 用户显式说"归档 / 分支收尾 / merge 完清一下" |
 
@@ -250,10 +249,9 @@ scripts/
   install_suite.py           # 本地开发用的 symlink 安装器
   npm/                       # 打包 check/build 助手
 skills/                      # SKILL.md + agents/openai.yaml + references/ 三件套；不再带 scripts/
-  using-dev-memory/
-  dev-memory-setup/
   dev-memory-context/
   dev-memory-capture/
+  dev-memory-setup/
   dev-memory-tidy/
   dev-memory-graduate/
 suite-manifest.json          # 套件 + 历史遗留 skill 命名的唯一表

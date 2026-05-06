@@ -1,7 +1,6 @@
 {
   "suite_name": "dev-memory-skill-suite",
   "skills": [
-    "using-dev-memory",
     "dev-memory-setup",
     "dev-memory-context",
     "dev-memory-capture",
@@ -17,6 +16,7 @@
     "dev-assets-sync",
     "dev-assets-update",
     "using-dev-assets",
+    "using-dev-memory",
     "dev-assets-setup",
     "dev-assets-context",
     "dev-assets-capture",
