@@ -98,7 +98,11 @@
 
 ## 各 Skill 现在的职责
 
-> 0.16 起取消 `using-dev-memory` 路由总入口。SessionStart hook 注入已经把 AI 拉到 dev-memory 上下文，footer 直接指向 `dev-memory-context` / `dev-memory-capture`，不再需要一层 meta skill。各子 skill 自己的 description 承担触发判断。
+> 0.16 起取消 `using-dev-memory` 路由总入口；0.17 起再取消 `dev-memory-context` 读取 skill —— SessionStart hook 注入末尾直接列出权威记忆文件的绝对路径，AI 需要详情时 Read 对应文件即可，不再需要 skill 中转。CLI 命令 `dev-memory context show` / `context sync` 仍然保留（hook 内部和脚本场景仍要用），只是不再以 skill 形式暴露。当前套件 4 个 skill。
+
+### 读取（无 skill）
+
+SessionStart hook 自动跑 `dev-memory context sync` 刷新 progress.md auto-block，并把 progress / risks / decisions / glossary / overview / repo 共享层文件的绝对路径直接列在注入末尾。AI 需要展开任何细节时 Read 对应文件即可。
 
 ### `dev-memory-setup`
 
@@ -109,16 +113,6 @@
 - 创建 repo 层和 branch 层骨架
 - 为当前仓库记录 storage root
 - 在存在旧 `.dev-memory/<branch>/` 时迁移 branch 资料
-
-### `dev-memory-context`
-
-恢复当前分支记忆，并轻量刷新 branch 的 Git 自动区。
-
-它不会重建整个记忆，只负责：
-
-- 找到当前 repo-key / branch 目录
-- 读已有记忆
-- 刷新 focus areas、scope summary、HEAD 元信息
 
 ### `dev-memory-update`
 

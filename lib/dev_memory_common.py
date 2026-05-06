@@ -488,7 +488,7 @@ def template_progress(branch_name):
             ("下一步", "- 待补充"),
             (
                 "自动同步区",
-                "本区由 `dev-memory-context` 或 `dev-memory-capture` 刷新，请不要手工编辑。\n\n"
+                "本区由 `dev-memory capture sync-working-tree` / SessionStart hook 自动刷新，请不要手工编辑。\n\n"
                 f"{AUTO_START}\n"
                 "_尚未同步_\n"
                 f"{AUTO_END}",
@@ -808,7 +808,7 @@ def migrate_v1_to_v2_branch(branch_dir, branch_name):
     if auto_block is not None:
         progress_sections.append((
             "自动同步区",
-            "本区由 `dev-memory-context` 或 `dev-memory-capture` 刷新，请不要手工编辑。\n\n"
+            "本区由 `dev-memory capture sync-working-tree` / SessionStart hook 自动刷新，请不要手工编辑。\n\n"
             f"{AUTO_START}\n{auto_block}\n{AUTO_END}",
         ))
     if progress_sections:
@@ -1335,7 +1335,7 @@ def ensure_progress_auto_block(path):
     marker = "## 自动同步区"
     auto_section = (
         f"\n\n{marker}\n\n"
-        "本区由 `dev-memory-context` 或 `dev-memory-capture` 刷新，请不要手工编辑。\n\n"
+        "本区由 `dev-memory capture sync-working-tree` / SessionStart hook 自动刷新，请不要手工编辑。\n\n"
         f"{AUTO_START}\n"
         "_尚未同步_\n"
         f"{AUTO_END}\n"

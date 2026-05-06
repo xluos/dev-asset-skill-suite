@@ -8,15 +8,16 @@
 
 ## v2 架构：6 个 Skill
 
-v2 把旧的 sync + update 合并成统一的 capture，并把 setup 从前置门禁改为 merge 动作、加 lazy init、加 v1→v2 自动迁移。0.16 起取消 `using-dev-memory` 路由总入口（hooks 注入已经完成 AI 引导，不再需要一层 meta skill），各子 skill 自己的 description 承担触发。当前套件 5 个 skill。
+v2 把旧的 sync + update 合并成统一的 capture，并把 setup 从前置门禁改为 merge 动作、加 lazy init、加 v1→v2 自动迁移。0.16 起取消 `using-dev-memory` 路由总入口；0.17 起再取消 `dev-memory-context` 读取 skill —— SessionStart hook 注入末尾直接列出权威记忆文件的绝对路径，AI 需要详情时 Read 对应文件即可，不再需要 skill 中转。当前套件 4 个 skill（全部偏写入 / 流程 / 整理）。
 
 | Skill | 定位 | 典型触发 |
 | --- | --- | --- |
-| `dev-memory-context` | 恢复当前分支记忆，按 tiered lookup 顺序读 | 继续已有分支开发 |
 | `dev-memory-capture` | **统一写入入口**（合并 sync + update） | 本轮产生稳定结论 / checkpoint / 用户手动记一笔 / 改写旧条目 |
 | `dev-memory-setup` | 整理 unsorted.md + 补元信息 + 标 setup_completed（不再是前置门禁） | unsorted.md 累积、用户明确说"整理一下" |
 | `dev-memory-tidy` | **定期校准入口**：已结构化条目漂移时（陈旧 / 重复 / 模板残留），agent 聚合 proposal → 浏览器审 → apply 落盘 + 自动备份 | 用户说"整理一下记忆 / 清下过期的 / 看看哪些还成立" |
 | `dev-memory-graduate` | 分支收尾：从 pending-promotion 提炼上提 + 归档 branch | 用户显式说"归档 / 分支收尾 / merge 完清一下" |
+
+> 读取路径：SessionStart hook 自动注入 progress / risks / decisions 等摘要 + 完整文件路径；后续直接 Read 文件，或跑 CLI `dev-memory context show` / `context sync` 拿 paths / 重新刷新（命令保留，只是不再以 skill 形式暴露）。
 
 详细设计与语义见：
 
@@ -249,7 +250,6 @@ scripts/
   install_suite.py           # 本地开发用的 symlink 安装器
   npm/                       # 打包 check/build 助手
 skills/                      # SKILL.md + agents/openai.yaml + references/ 三件套；不再带 scripts/
-  dev-memory-context/
   dev-memory-capture/
   dev-memory-setup/
   dev-memory-tidy/

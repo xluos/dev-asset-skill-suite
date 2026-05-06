@@ -2,7 +2,6 @@
   "suite_name": "dev-memory-skill-suite",
   "skills": [
     "dev-memory-setup",
-    "dev-memory-context",
     "dev-memory-capture",
     "dev-memory-graduate",
     "dev-memory-tidy"
@@ -17,6 +16,7 @@
     "dev-assets-update",
     "using-dev-assets",
     "using-dev-memory",
+    "dev-memory-context",
     "dev-assets-setup",
     "dev-assets-context",
     "dev-assets-capture",

@@ -1,5 +1,10 @@
 # Branch Memory Principles
 
+> ⚠️ This file is the v1-era design doc and is partially out of date.
+> The "Skill Boundaries" section in particular references retired skills
+> (`dev-memory-context`, `dev-memory-sync`, `dev-memory-update`). For
+> current architecture see `README.md` + `docs/dev-memory-skill-suite-guide.md`.
+
 ## Goal
 
 这个仓库的目标是维护“跨会话可恢复、以分支为主执行上下文、同时允许仓库共享层存在”的开发资产记忆。

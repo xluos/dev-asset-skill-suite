@@ -52,7 +52,7 @@
   {
     "query": "看看当前分支的 dev-memory 记忆到哪了，我有点忘了之前结论",
     "should_trigger": false,
-    "note": "纯读取需求，应该走 dev-memory-context 不是 capture"
+    "note": "纯读取需求，应该 Read 注入文本里列出的分支文件，不是 capture"
   },
   {
     "query": "这个分支可以归档了，给我走一遍 graduate 流程，提炼下跨分支经验",

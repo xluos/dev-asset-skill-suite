@@ -30,10 +30,10 @@ from dev_memory_common import (
 )
 
 
-CONTEXT_SCRIPT = PACKAGE_ROOT / "skills" / "dev-memory-context" / "scripts" / "dev_memory_context.py"
+CONTEXT_SCRIPT = PACKAGE_ROOT / "lib" / "dev_memory_context.py"
 # v2: sync/update merged into capture. All auto-block refresh and
 # record-head calls now go through the capture script.
-CAPTURE_SCRIPT = PACKAGE_ROOT / "skills" / "dev-memory-capture" / "scripts" / "dev_memory_capture.py"
+CAPTURE_SCRIPT = PACKAGE_ROOT / "lib" / "dev_memory_capture.py"
 
 
 def run_python(script_path, *args, cwd=None):
@@ -261,34 +261,70 @@ def _build_context_from_assets(assets, *, full=True, heading=None):
             any_truncated = True
         parts.append(block)
 
-    # Brief-mode footer: point the agent (and the human reading this prompt)
-    # at the exact command to pull full memory. Without this, an agent that
-    # sees a 4-line brief may just act on it without realising there's 10x
-    # more detail one call away. no-git path has no drill-down concept, so
-    # skip it there.
+    # Footer: list authoritative memory file paths so the agent can Read them
+    # directly when the injected snippets are insufficient. Replaces the
+    # retired dev-memory-context skill — drill-down is now a Read away, no
+    # extra skill hop needed.
     if not no_git:
+        archive_root = paths.get("repo_artifacts")
+        archive_dir = (
+            archive_root.parent.parent / "branches" / "_archived"
+            if archive_root is not None
+            else None
+        )
+        path_lines = []
+        for key, label in (
+            ("progress", "hot 层：当前进展 + 下一步 + 自动同步区"),
+            ("risks", "hot 层：阻塞 + 后续注意点"),
+            ("decisions", "决策背景（为什么这么做）"),
+            ("glossary", "术语 / 链接 / 测试命令"),
+            ("overview", "分支概览（目标 / 范围 / 阶段 / 约束）"),
+            ("repo_overview", "repo 共享：长期目标 + 跨分支约束"),
+            ("repo_decisions", "repo 共享：跨分支通用决策"),
+            ("repo_glossary", "repo 共享：长期背景 + 共享入口"),
+        ):
+            p = paths.get(key)
+            if p is not None:
+                path_lines.append(f"- `{p}` — {label}")
+
+        archive_hint = (
+            f"_归档分支查询：`grep -r 'KEYWORD' {archive_dir}/` —— 体量大时派 Task 子 agent。_"
+            if archive_dir is not None
+            else None
+        )
+
         if not full:
             repo_root = assets.get("repo_root")
             repo_name = repo_root.name if hasattr(repo_root, "name") else "<repo>"
-            parts.append(
-                f"_brief 摘要。本 repo 完整记忆 → `dev-memory-context show --repo {repo_name}`_"
-            )
+            footer_lines = [
+                "---",
+                "_brief 摘要。本 repo 完整记忆见以下文件：_",
+                "",
+                *path_lines,
+            ]
+            if archive_hint:
+                footer_lines.extend(["", archive_hint])
+            footer_lines.extend(["", "_本轮产生新决策 / 进展 / 阻塞时走 `dev-memory-capture` 写入。_"])
+            parts.append("\n".join(footer_lines))
         else:
-            # Full-mode footer: counter the "context already injected ≡ context
-            # is exhaustive" cognitive bias. Drill-down + write-back are
-            # surfaced directly (no longer via a meta router skill — see
-            # using-dev-memory removal).
             truncation_note = (
                 "上文标注 `完整内容: <path>` 的段落已截断，需详情请直接 Read 该文件。"
                 if any_truncated
-                else "需进一步细节通过 `dev-memory-context` skill 或直接 Read 上面提到的分支文件拉取。"
+                else "本轮需要更多细节时直接 Read 下面列出的文件，无需先调任何 skill。"
             )
-            parts.append(
-                "---\n"
+            footer_lines = [
+                "---",
                 "_以上为 SessionStart 自动注入的浓缩摘要（非完整记忆）。"
-                "本轮产生新决策 / 进展 / 阻塞时走 `dev-memory-capture` 写入；"
-                f"{truncation_note}_"
-            )
+                + truncation_note + "_",
+                "",
+                "_完整记忆文件（按 tiered lookup 优先级）：_",
+                "",
+                *path_lines,
+            ]
+            if archive_hint:
+                footer_lines.extend(["", archive_hint])
+            footer_lines.extend(["", "_本轮产生新决策 / 进展 / 阻塞时走 `dev-memory-capture` 写入。_"])
+            parts.append("\n".join(footer_lines))
 
     return "\n\n".join(parts)
 
@@ -364,9 +400,8 @@ def build_workspace_start_context():
         header_parts.append(f"Primary 仓库：`{primary}` ({status})")
     if has_brief:
         header_parts.append(
-            "_其它仓库按 brief 摘要注入。聚焦某个仓库做实质工作前，"
-            "调用 `dev-memory-context` skill（或 `dev-memory-context show --repo <name>`）"
-            "加载完整记忆。_"
+            "_其它仓库按 brief 摘要注入；每个 brief 末尾列出该仓库的完整记忆文件路径，"
+            "聚焦时直接 Read 即可（如需 CLI：`dev-memory context show --repo <name>`）。_"
         )
     header = "\n".join(header_parts)
     return header + "\n\n---\n\n" + "\n\n---\n\n".join(sections)
