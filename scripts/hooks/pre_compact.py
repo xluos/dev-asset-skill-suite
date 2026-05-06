@@ -1,36 +1,19 @@
 #!/usr/bin/env python3
+"""PreCompact hook — intentionally a no-op.
 
-from _common import (
-    is_no_git_mode,
-    is_workspace_mode,
-    log,
-    maybe_sync_working_tree,
-    resolve_assets,
-    sync_working_tree_all_repos,
-)
+In earlier versions this hook refreshed progress.md's auto-sync block via
+`capture sync-working-tree`, but SessionStart already does the same refresh
+at the start of every conversation. Running it again right before context
+compaction adds no signal (the agent's transcript already carries the prior
+sync) and burns extra git commands. Kept as a stub so existing hook
+installations don't error out — safe to remove from settings if you want.
+"""
+
+from _common import log
 
 
 def main():
-    try:
-        if is_no_git_mode():
-            log("[dev-memory][PreCompact] no-git mode: nothing to refresh (no working tree)")
-            return 0
-        if is_workspace_mode():
-            results = sync_working_tree_all_repos()
-            if not results:
-                log("[dev-memory][PreCompact] workspace mode: no initialized repos refreshed")
-            return 0
-        assets = resolve_assets()
-        if not assets["branch_dir"].exists():
-            log("[dev-memory][PreCompact] branch memory not initialized, skip")
-            return 0
-        payload = maybe_sync_working_tree()
-        log(
-            "[dev-memory][PreCompact] refreshed working-tree navigation for "
-            f"{payload['branch']} ({payload['files_considered']} files)"
-        )
-    except Exception as exc:
-        log(f"[dev-memory][PreCompact] skipped: {exc}")
+    log("[dev-memory][PreCompact] no-op (refresh handled at SessionStart)")
     return 0
 
 

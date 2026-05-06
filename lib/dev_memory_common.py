@@ -1186,19 +1186,46 @@ def summarize_focus_areas(paths, limit=None):
     return [k for k, _ in ranked[:limit]]
 
 
+# Number of recent commits whose touched files contribute to the "focus area"
+# signal. The merge-base diff was previously the long-tail input here, but on
+# long-lived branches it dilutes hot-spot detection. Recent commits are a
+# better proxy for "what's currently being worked on" without dragging in
+# branch-lifecycle history.
+RECENT_COMMITS_FOR_FOCUS = 10
+
+
+def _files_in_recent_commits(repo_root, count):
+    """Files touched by the last `count` non-merge commits on HEAD."""
+    out = git_lines(
+        [
+            "log",
+            f"-n{count}",
+            "--no-merges",
+            "--name-only",
+            "--pretty=format:",
+        ],
+        cwd=repo_root,
+        check=False,
+    )
+    seen = []
+    seen_set = set()
+    for line in out:
+        if not line or line in seen_set:
+            continue
+        seen_set.add(line)
+        seen.append(line)
+    return seen
+
+
 def collect_git_facts(repo_root, branch_name, _storage_root=None):
     working_tree_files = git_lines(["diff", "--name-only"], cwd=repo_root)
     staged_files = git_lines(["diff", "--cached", "--name-only"], cwd=repo_root)
     untracked_files = git_lines(["ls-files", "--others", "--exclude-standard"], cwd=repo_root)
+    recent_commit_files = _files_in_recent_commits(repo_root, RECENT_COMMITS_FOR_FOCUS)
 
     default_base = detect_default_base(repo_root)
-    since_base_files = []
-    if default_base:
-        merge_base = git_lines(["merge-base", "HEAD", default_base], cwd=repo_root)
-        if merge_base:
-            since_base_files = git_lines(["diff", "--name-only", f"{merge_base[0]}...HEAD"], cwd=repo_root)
 
-    all_paths = sorted(set(working_tree_files + staged_files + untracked_files + since_base_files))
+    all_paths = sorted(set(working_tree_files + staged_files + untracked_files + recent_commit_files))
     return {
         "branch": branch_name,
         "default_base": default_base,
@@ -1206,11 +1233,70 @@ def collect_git_facts(repo_root, branch_name, _storage_root=None):
         "working_tree_files": working_tree_files,
         "staged_files": staged_files,
         "untracked_files": untracked_files,
-        "since_base_files": since_base_files,
+        "recent_commit_files": recent_commit_files,
         "scope_summary": summarize_scopes(all_paths),
         "focus_areas": summarize_focus_areas(all_paths),
         "updated_at": now_iso(),
     }
+
+
+def merged_focus_areas(new_paths, existing, limit=None):
+    """Compute focus_areas, merging in previously known focus dirs.
+
+    `existing` is the focus_areas list stored on the branch manifest from a
+    prior sync. We:
+
+      1. Drop any new path already covered by an existing dir (since that
+         signal is already represented).
+      2. Re-cluster the remaining new paths' parents together with the
+         existing dirs (each old dir gets weight 1 — equal footing with a
+         freshly-observed parent).
+
+    This means stable "long-running" focus areas survive across SessionStart
+    cycles even when the working tree has been committed clean, while newly
+    activated areas can still surface.
+    """
+    if limit is None:
+        limit = FOCUS_AREA_LIMIT
+    if not existing:
+        return summarize_focus_areas(new_paths, limit=limit)
+
+    def _is_under(path, dir_):
+        if dir_ in ("", "."):
+            return "/" not in path
+        return path == dir_ or path.startswith(dir_ + "/")
+
+    uncovered = [p for p in new_paths if not any(_is_under(p, d) for d in existing)]
+
+    buckets = Counter()
+    for p in uncovered:
+        buckets[_initial_parent(p)] += 1
+    for d in existing:
+        if d not in buckets:
+            buckets[d] = 1  # baseline weight for legacy entries
+
+    while len(buckets) > limit:
+        proposals = {}
+        for key, count in buckets.items():
+            if not _can_roll_up(key):
+                continue
+            new_key = _rolled_up(key)
+            entry = proposals.setdefault(new_key, [0, []])
+            entry[0] += count
+            entry[1].append(key)
+        if not proposals:
+            break
+        def score(item):
+            new_key, (sum_count, _) = item
+            depth = len(Path(new_key).parts) if new_key not in ("", ".") else 0
+            return (sum_count, depth, new_key)
+        winner_key, (winner_count, originals) = max(proposals.items(), key=score)
+        for k in originals:
+            buckets.pop(k)
+        buckets[winner_key] = buckets.get(winner_key, 0) + winner_count
+
+    ranked = sorted(buckets.items(), key=lambda kv: (-kv[1], kv[0]))
+    return [k for k, _ in ranked[:limit]]
 
 
 def build_auto_block(facts):
@@ -1220,11 +1306,6 @@ def build_auto_block(facts):
     scope_lines = render_bullets(
         [f"{item['scope']} ({item['files']} files)" for item in facts["scope_summary"]],
         empty_text="- 当前未检测到改动范围",
-    )
-    history_hint = (
-        f"- `git log --oneline {facts['default_base']}..HEAD`"
-        if facts["default_base"]
-        else "- `git log --oneline --decorate -n 20`"
     )
     return (
         "### 自动生成\n\n"
@@ -1237,7 +1318,7 @@ def build_auto_block(facts):
         "#### 顶层改动范围\n\n"
         f"{scope_lines}\n\n"
         "#### 按需查看提交历史\n\n"
-        f"{history_hint}\n"
+        f"- `git log --oneline -n {RECENT_COMMITS_FOR_FOCUS} --no-merges`\n"
         "- `git diff --name-only`\n"
     )
 

@@ -12,6 +12,7 @@ from dev_memory_common import (
     ensure_branch_paths_exist,
     get_setup_completed,
     list_missing_docs,
+    merged_focus_areas,
     read_json,
     sync_progress,
     write_json,
@@ -46,7 +47,15 @@ def command_sync(args):
         print(json.dumps({"mode": "no-git", "skipped": True}, ensure_ascii=False))
         return
 
+    prior_manifest = read_json(paths["manifest"]) or {}
     facts = collect_git_facts(repo_root, branch_name, storage_root)
+    all_paths = sorted(set(
+        facts["working_tree_files"]
+        + facts["staged_files"]
+        + facts["untracked_files"]
+        + facts["recent_commit_files"]
+    ))
+    facts["focus_areas"] = merged_focus_areas(all_paths, prior_manifest.get("focus_areas") or [])
     sync_progress(paths, facts)
 
     manifest = read_json(paths["manifest"])
@@ -89,14 +98,7 @@ def command_sync(args):
         "branch_dir": str(branch_dir),
         "missing_or_placeholder": list_missing_docs(paths),
         "focus_areas": facts["focus_areas"],
-        "files_considered": len(
-            set(
-                facts["working_tree_files"]
-                + facts["staged_files"]
-                + facts["untracked_files"]
-                + facts["since_base_files"]
-            )
-        ),
+        "files_considered": len(all_paths),
     }
     print(json.dumps(payload, ensure_ascii=False, indent=2))
 

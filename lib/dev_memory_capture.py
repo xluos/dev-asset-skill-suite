@@ -33,6 +33,7 @@ from dev_memory_common import (
     is_cross_branch_candidate,
     join_sections,
     list_missing_docs,
+    merged_focus_areas,
     now_iso,
     read_json,
     render_bullets,
@@ -468,7 +469,15 @@ def command_sync_working_tree(args):
         print(json.dumps({"mode": "no-git", "skipped": True}, ensure_ascii=False))
         return 0
 
+    prior_manifest = read_json(paths["manifest"]) or {}
     facts = collect_git_facts(repo_root, branch_name, storage_root)
+    all_paths = sorted(set(
+        facts["working_tree_files"]
+        + facts["staged_files"]
+        + facts["untracked_files"]
+        + facts["recent_commit_files"]
+    ))
+    facts["focus_areas"] = merged_focus_areas(all_paths, prior_manifest.get("focus_areas") or [])
     sync_progress(paths, facts)
 
     manifest = read_json(paths["manifest"])
@@ -513,14 +522,7 @@ def command_sync_working_tree(args):
                 "branch_dir": str(branch_dir),
                 "mode": "sync-working-tree",
                 "focus_areas": manifest["focus_areas"],
-                "files_considered": len(
-                    set(
-                        facts["working_tree_files"]
-                        + facts["staged_files"]
-                        + facts["untracked_files"]
-                        + facts["since_base_files"]
-                    )
-                ),
+                "files_considered": len(all_paths),
             },
             ensure_ascii=False,
             indent=2,
