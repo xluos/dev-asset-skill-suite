@@ -68,6 +68,18 @@ function runPython(scriptPath, args, cwd = process.cwd(), extraEnv = {}) {
   }
 }
 
+function runPythonCapture(scriptPath, args, cwd = process.cwd(), extraEnv = {}) {
+  const python = findPython();
+  const env = { ...process.env, ...extraEnv };
+  const result = spawnSync(python, [scriptPath, ...args], {
+    cwd,
+    env,
+    encoding: "utf8",
+    stdio: ["inherit", "pipe", "pipe"],
+  });
+  return { status: result.status, stdout: result.stdout || "", stderr: result.stderr || "" };
+}
+
 function buildSessionStartContext(repoRoot) {
   const script = packageScript("scripts", "hooks", "session_start.py");
   const env = {
@@ -214,6 +226,313 @@ function commandPySubcommand(name, rawArgs) {
   runPython(scriptPath, rawArgs);
 }
 
+function branchScript() {
+  return packageScript("lib", "dev_memory_branch.py");
+}
+
+function callBranchPython(args) {
+  const result = runPythonCapture(branchScript(), args);
+  if (result.status !== 0) {
+    let message = result.stderr.trim() || `branch op failed (exit ${result.status})`;
+    try {
+      const parsed = JSON.parse(result.stderr.trim());
+      if (parsed && parsed.error) message = parsed.error;
+    } catch (_) {
+      // not json — keep raw stderr
+    }
+    return { ok: false, error: message };
+  }
+  try {
+    return { ok: true, data: JSON.parse(result.stdout.trim()) };
+  } catch (err) {
+    return { ok: false, error: `unable to parse branch output: ${err.message}` };
+  }
+}
+
+function loadClack() {
+  try {
+    return require("@clack/prompts");
+  } catch (_) {
+    fail(
+      "@clack/prompts is not installed. Run `npm install` inside the dev-memory-cli "
+      + "package, or use the non-interactive forms: dev-memory branch rename|fork ...",
+    );
+  }
+}
+
+function relativeAge(iso) {
+  if (!iso) return "未初始化";
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return iso;
+  const diff = Date.now() - t;
+  const min = Math.round(diff / 60000);
+  if (min < 1) return "刚刚";
+  if (min < 60) return `${min} 分钟前`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return `${hr} 小时前`;
+  const day = Math.round(hr / 24);
+  if (day < 30) return `${day} 天前`;
+  const mon = Math.round(day / 30);
+  return `${mon} 个月前`;
+}
+
+function describeBranchRow(row) {
+  const tags = [];
+  if (row.git_exists) tags.push("git");
+  if (!row.memory_exists) tags.push("无记忆");
+  else if (row.is_skeleton) tags.push("空骨架");
+  else tags.push(`${row.entry_count} 条记忆`);
+  if (row.last_updated) tags.push(relativeAge(row.last_updated));
+  return tags.join(" · ");
+}
+
+async function runConflictPrompt(p, target) {
+  const used = target.memory_exists && !target.is_skeleton;
+  if (!used) return { mode: null };
+  const choice = await p.select({
+    message: `目标分支 ${target.name} 已有 ${target.entry_count} 条记忆，怎么处理？`,
+    options: [
+      { value: "backup", label: "备份后覆盖", hint: "移到 _archived/ 后再迁移（推荐）" },
+      { value: "force", label: "强制覆盖", hint: "直接删除，无法恢复" },
+      { value: "cancel", label: "返回上一步" },
+    ],
+    initialValue: "backup",
+  });
+  if (p.isCancel(choice) || choice === "cancel") return { cancelled: true };
+  return { mode: choice };
+}
+
+function buildPlanArgs(plan) {
+  const args = [plan.op];
+  if (plan.op === "rename" || plan.op === "fork") {
+    args.push("--source", plan.source, "--target", plan.target);
+  } else if (plan.op === "delete" || plan.op === "init") {
+    args.push("--branch", plan.branch);
+  }
+  if (plan.mode === "force") args.push("--force");
+  if (plan.mode === "backup") args.push("--backup");
+  return args;
+}
+
+function summarizePlan(plan) {
+  if (plan.op === "rename" || plan.op === "fork") {
+    return `${plan.op}: ${plan.source} → ${plan.target}` + (plan.mode ? ` · 冲突处理: ${plan.mode}` : "");
+  }
+  return `${plan.op}: ${plan.branch} · 模式: ${plan.mode}`;
+}
+
+function describePlanResult(plan, data) {
+  if (plan.op === "rename" || plan.op === "fork") {
+    return `已完成 ${plan.op}：${data.source} → ${data.target}`;
+  }
+  if (plan.op === "delete") {
+    return `已删除 ${data.branch} 的记忆（${data.mode}）`;
+  }
+  return `已重置 ${data.branch}（${data.mode}）`;
+}
+
+async function pickBranchAutocomplete(p, message, options, { allowManual = false } = {}) {
+  const finalOptions = options.slice();
+  if (allowManual) {
+    finalOptions.push({
+      value: "__manual__",
+      label: "手动输入分支名…",
+      hint: "新分支或不在列表里",
+    });
+  }
+  const picked = await p.autocomplete({
+    message,
+    options: finalOptions,
+    placeholder: "输入关键字过滤，↑↓ 选择，回车确认",
+    maxItems: 8,
+  });
+  if (p.isCancel(picked)) return null;
+  if (picked === "__manual__") {
+    const typed = await p.text({
+      message: "输入分支名",
+      validate: (v) => (!v || !v.trim() ? "不能为空" : undefined),
+    });
+    if (p.isCancel(typed)) return null;
+    return typed.trim();
+  }
+  return picked;
+}
+
+async function pickDestructiveMode(p, message) {
+  const choice = await p.select({
+    message,
+    options: [
+      { value: "backup", label: "备份后执行", hint: "移到 _archived/，可恢复（推荐）" },
+      { value: "force", label: "强制执行", hint: "直接销毁，无法恢复" },
+      { value: "cancel", label: "返回上一步" },
+    ],
+    initialValue: "backup",
+  });
+  if (p.isCancel(choice) || choice === "cancel") return null;
+  return choice;
+}
+
+async function interactiveFromUsedBranch(p, snapshot) {
+  const action = await p.select({
+    message: `当前分支 ${snapshot.current_branch} 已有 ${snapshot.current.entry_count} 条记忆，要做什么？`,
+    options: [
+      { value: "rename", label: "迁移到另一个分支", hint: "rename — 当前分支记忆消失" },
+      { value: "fork", label: "复制到另一个分支", hint: "fork — 当前分支保留" },
+      { value: "init", label: "重置当前分支", hint: "回到空骨架" },
+      { value: "delete", label: "删除当前分支的记忆", hint: "整个目录移走/销毁" },
+      { value: "cancel", label: "取消" },
+    ],
+    initialValue: "fork",
+  });
+  if (p.isCancel(action) || action === "cancel") return null;
+
+  if (action === "delete" || action === "init") {
+    const mode = await pickDestructiveMode(
+      p,
+      action === "delete"
+        ? `确认删除 ${snapshot.current_branch} 的 ${snapshot.current.entry_count} 条记忆？`
+        : `确认重置 ${snapshot.current_branch}（${snapshot.current.entry_count} 条记忆将丢失）？`,
+    );
+    if (!mode) return null;
+    return { op: action, branch: snapshot.current_branch, mode };
+  }
+
+  // rename / fork
+  const candidates = snapshot.branches
+    .filter((b) => b.name !== snapshot.current_branch)
+    .map((b) => ({ value: b.name, label: b.name, hint: describeBranchRow(b) }));
+
+  const target = await pickBranchAutocomplete(p, "目标分支：", candidates, { allowManual: true });
+  if (!target) return null;
+
+  const targetRow = snapshot.branches.find((b) => b.name === target) || {
+    name: target,
+    memory_exists: false,
+    is_skeleton: true,
+    deviations: [],
+    entry_count: 0,
+  };
+  const conflict = await runConflictPrompt(p, targetRow);
+  if (conflict.cancelled) return null;
+
+  return { op: action, source: snapshot.current_branch, target, mode: conflict.mode };
+}
+
+async function interactiveFromEmptyBranch(p, snapshot) {
+  const candidates = snapshot.branches
+    .filter((b) => b.name !== snapshot.current_branch && b.memory_exists && !b.is_skeleton)
+    .map((b) => ({ value: b.name, label: b.name, hint: describeBranchRow(b) }));
+  if (candidates.length === 0) {
+    p.log.warn("没找到其他分支有可迁移的记忆，无事可做。");
+    return null;
+  }
+  const source = await pickBranchAutocomplete(
+    p,
+    `当前分支 ${snapshot.current_branch} 还没用过，从哪个分支接力？`,
+    candidates,
+  );
+  if (!source) return null;
+
+  const op = await p.select({
+    message: "方式：",
+    options: [
+      { value: "fork", label: "fork — 复制过来", hint: `${source} 保留` },
+      { value: "rename", label: "rename — 搬过来", hint: `${source} 消失` },
+    ],
+    initialValue: "fork",
+  });
+  if (p.isCancel(op)) return null;
+
+  // Current branch is, by construction, an empty skeleton, so no conflict prompt
+  // is needed — python's _resolve_conflict will silently overwrite it.
+  return { op, source, target: snapshot.current_branch, mode: null };
+}
+
+async function commandBranchInteractive() {
+  if (!process.stdin.isTTY || !process.stdout.isTTY) {
+    fail(
+      "interactive branch flow requires a TTY. Use the non-interactive form instead:\n"
+      + "  dev-memory branch list\n"
+      + "  dev-memory branch rename --source A --target B [--force | --backup]\n"
+      + "  dev-memory branch fork   --source A --target B [--force | --backup]",
+    );
+  }
+  const p = loadClack();
+  p.intro("dev-memory · 分支记忆迁移");
+
+  const listed = callBranchPython(["list"]);
+  if (!listed.ok) {
+    p.cancel(listed.error);
+    process.exit(1);
+  }
+  const snapshot = listed.data;
+  if (!snapshot.current_branch) {
+    p.cancel("当前 HEAD 处于游离状态，请先 checkout 一个分支再试。");
+    process.exit(1);
+  }
+  const current = snapshot.branches.find((b) => b.name === snapshot.current_branch);
+  if (!current) {
+    p.cancel(`未在分支列表中找到当前分支 ${snapshot.current_branch}。`);
+    process.exit(1);
+  }
+  snapshot.current = current;
+
+  let plan;
+  if (current.memory_exists && !current.is_skeleton) {
+    plan = await interactiveFromUsedBranch(p, snapshot);
+  } else {
+    plan = await interactiveFromEmptyBranch(p, snapshot);
+  }
+  if (!plan) {
+    p.cancel("已取消。");
+    process.exit(0);
+  }
+
+  const confirmed = await p.confirm({
+    message: `确认执行 ${summarizePlan(plan)}？`,
+    initialValue: true,
+  });
+  if (p.isCancel(confirmed) || !confirmed) {
+    p.cancel("已取消。");
+    process.exit(0);
+  }
+
+  const result = callBranchPython(buildPlanArgs(plan));
+  if (!result.ok) {
+    p.log.error(result.error);
+    p.outro("失败");
+    process.exit(1);
+  }
+  p.log.success(describePlanResult(plan, result.data));
+  const dirField = result.data.target_dir || result.data.branch_dir;
+  if (dirField) p.log.info(`目录：${dirField}`);
+  p.outro("done");
+}
+
+function commandBranch(rawArgs) {
+  const sub = rawArgs[0];
+  // No subcommand → interactive mode.
+  if (!sub || sub === "--help" || sub === "-h") {
+    if (sub === "--help" || sub === "-h") {
+      process.stdout.write(`Usage:
+  dev-memory branch                          # interactive flow
+  dev-memory branch list                     # JSON snapshot of all branches
+  dev-memory branch inspect [--branch NAME]  # JSON snapshot of one branch
+  dev-memory branch rename --source A --target B [--force | --backup]
+  dev-memory branch fork   --source A --target B [--force | --backup]
+  dev-memory branch delete [--branch NAME] [--force | --backup]
+  dev-memory branch init   [--branch NAME] [--force | --backup]
+`);
+      return;
+    }
+    commandBranchInteractive();
+    return;
+  }
+  // Any other subcommand is forwarded to python verbatim — the python side
+  // owns the flag parsing.
+  runPython(branchScript(), rawArgs);
+}
+
 function printHelp() {
   process.stdout.write(`Usage:
   dev-memory hook <session-start|pre-compact|stop|session-end> [--repo PATH]
@@ -225,6 +544,7 @@ function printHelp() {
   dev-memory setup <init|merge-unsorted|mark-completed> [...]
   dev-memory graduate <dry-run|apply|index> [...]
   dev-memory tidy <prepare|apply> [...]
+  dev-memory branch [list|inspect|rename|fork|delete|init] [...]   # no subcommand = interactive
 
 Environment:
   DEV_MEMORY_ROOT defaults to ${DEFAULT_STORAGE_ROOT}
@@ -241,6 +561,10 @@ function main() {
   }
   if (PY_SUBCOMMAND_SCRIPTS[command]) {
     commandPySubcommand(command, argv.slice(1));
+    return;
+  }
+  if (command === "branch") {
+    commandBranch(argv.slice(1));
     return;
   }
   // Legacy commands keep using the lightweight Node-side parser.
