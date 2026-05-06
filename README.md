@@ -6,7 +6,7 @@
 
 ![套件总览](docs/diagrams/overview.png)
 
-## v2 架构：6 个 Skill
+## v2 架构：4 个 Skill + branch CLI
 
 v2 把旧的 sync + update 合并成统一的 capture，并把 setup 从前置门禁改为 merge 动作、加 lazy init、加 v1→v2 自动迁移。0.16 起取消 `using-dev-memory` 路由总入口；0.17 起再取消 `dev-memory-context` 读取 skill —— SessionStart hook 注入末尾直接列出权威记忆文件的绝对路径，AI 需要详情时 Read 对应文件即可，不再需要 skill 中转。当前套件 4 个 skill（全部偏写入 / 流程 / 整理）。
 
@@ -53,6 +53,27 @@ Capture 有三种写入模式：
 | `graduate` | 分支完成 | 跨分支知识上提 + 归档 branch 目录 | 提炼 + 归档 |
 
 三个互不替代：tidy 不分类、不归档、不跨分支提炼；setup 不删、不重写；graduate 不动单分支内的 stale 条目。`tidy` 工作流是 agent 把相关条目聚合成"事项级 proposal"（如"清掉 demo 资产列表" / "重置 unsorted.md" / "删除整个 v1 残留 section"），生成静态 HTML 让用户对每个 proposal 选 accept / reject / custom（写自由文本反馈），导出 plan.json 后 apply；apply 永远先把整个 scope 备份到 `branches/<branch>/tidy_backup_<ts>/`。
+
+### 分支记忆生命周期（0.14 起新增 CLI）
+
+`dev-memory branch` 提供分支记忆目录级别的迁移和重置（不是 skill，是 CLI）。无参数进入交互式：检查当前分支记忆状态（已使用 / 空骨架 / 未初始化）后给出对应动作菜单，候选分支用 `@clack/prompts` 的 type-ahead 过滤，键入几个字符就能定位。
+
+```
+dev-memory branch                                    # 交互式
+dev-memory branch list                               # JSON 全分支快照
+dev-memory branch rename --source A --target B [--backup | --force]
+dev-memory branch fork   --source A --target B [--backup | --force]
+dev-memory branch delete [--branch X]                [--backup | --force]
+dev-memory branch init   [--branch X]                [--backup | --force]
+```
+
+破坏性操作三档冲突处理：
+
+- **默认 abort**：目标已使用时直接报错，不动数据
+- **`--backup`**：目标移到 `branches/_archived/<key>-<UTC>/` 后再执行（推荐）
+- **`--force`**：直接覆盖；自动写一份 `/tmp/dev-memory-force-backup/<repo-key>/<branch-key>-<UTC>/` 安全网，跨重启 macOS 会清，但同会话内误操作可恢复
+
+`fork` / `rename` 自动重写 5 个 markdown 里的"## 分支"机械字段为新分支名，重置 `progress.md` 的 auto-sync 区为占位（让下次 SessionStart 重生成），并在 `overview.md` 头部插入"## 分支起源"块记录来源分支与时间。用户自由文本里出现的源分支名不动 —— 那是真实历史叙事，改了反而破坏因果。
 
 ### Graduate 为什么必须显式
 
@@ -191,8 +212,8 @@ dev-memory ui --read-only          # 禁用编辑回写
 
 | 事件 | Claude | Codex | 做什么 |
 | --- | :-: | :-: | --- |
-| `SessionStart` | ✅ | ✅ | 恢复 repo+branch 记忆并注入新会话 |
-| `PreCompact` | ✅ | ✕ | 压缩前刷新 working-tree 派生导航 |
+| `SessionStart` | ✅ | ✅ | 跑 `context sync` 刷 progress.md auto 区，抽 14 段摘要 + 列权威记忆文件路径，注入会话上下文 |
+| `PreCompact` | ✅ | ✕ | **0.17 起 no-op**（SessionStart 已经刷过，重复跑无信号） |
 | `Stop` | ✅ | ✅ | 每次回复后落一个轻量 HEAD marker |
 | `SessionEnd` | ✅ | ✕ | 会话结束时再落一次最终 HEAD |
 
@@ -217,11 +238,12 @@ CLI 暴露的子命令：
 | Hook（自动触发，别手动调）| `dev-memory hook <session-start\|pre-compact\|stop\|session-end>` | 由 `.codex/hooks.json` / `.claude/settings.local.json` 自动调用 |
 | 安装助手 | `dev-memory install-hooks <codex\|claude\|--all>` | 把 hook 模板合并到目标配置 |
 | 浏览器 UI | `dev-memory ui [--port N] [--read-only]` | 启动本地浏览器界面看/编辑记忆 |
-| Skill 工作流（agent 在 SKILL.md 里调用，也能手动跑）| `dev-memory context <show\|sync\|...>` | 读分支记忆 |
-| | `dev-memory capture <record\|show\|suggest-kind\|...>` | 统一写入入口 |
+| 分支生命周期 | `dev-memory branch [list\|inspect\|rename\|fork\|delete\|init]` | 分支记忆迁移 / 副本 / 重置（无参数 = 交互式 type-ahead）|
+| Skill 工作流（agent 在 SKILL.md 里调用，也能手动跑）| `dev-memory capture <record\|show\|suggest-kind\|...>` | 统一写入入口 |
 | | `dev-memory setup <init\|merge-unsorted\|mark-completed>` | 整理 unsorted |
 | | `dev-memory tidy <prepare\|apply>` | 浏览器化的批量 review + 落盘 |
 | | `dev-memory graduate <dry-run\|apply\|index>` | 分支归档 + 跨分支知识上提 |
+| 内部（hook 用，也能手动）| `dev-memory context <show\|sync>` | 输出 paths JSON / 刷新 progress.md auto 区。0.17 起不再以 skill 形式暴露，CLI 命令保留 |
 
 子命令的 sub-subcommand 和参数由 Python 端 argparse 拥有，CLI 只透传 argv。
 
