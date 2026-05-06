@@ -240,13 +240,16 @@ def _build_context_from_assets(assets, *, full=True, heading=None):
 
     parts = []
     no_git = assets.get("branch_name") is None
-    if heading is None:
-        if no_git:
-            parts.append("已加载 dev-memory（no-git 模式）。")
-        else:
-            parts.append(f"已加载 dev-memory（分支 `{assets['branch_name']}`）。")
-    else:
+    if heading is not None:
+        # Workspace mode: caller passes a per-repo heading (e.g. "## [PRIMARY]
+        # repo @ branch") so multi-repo blocks are still distinguishable.
         parts.append(heading)
+    elif no_git:
+        # No-git has nothing in the footer paths to identify scope by, keep a
+        # minimal label.
+        parts.append("已加载 dev-memory（no-git 模式）。")
+    # Single-repo + git: skip the heading. Branch identity is derivable from
+    # the footer's directory header (.../branches/<branch>/).
 
     any_truncated = False
     for title, body, file_key in sections:
@@ -257,14 +260,16 @@ def _build_context_from_assets(assets, *, full=True, heading=None):
         if truncated:
             file_path = paths.get(file_key)
             if file_path is not None:
-                block += f"\n_完整内容: {file_path}_"
+                # Plain-text anchor (no markdown italic). Filename-only — the
+                # absolute prefix lives in the footer's directory header so we
+                # avoid printing the same prefix on every truncation.
+                block += f"\n↪ 完整: {file_path.name}"
             any_truncated = True
         parts.append(block)
 
-    # Footer: list authoritative memory file paths so the agent can Read them
-    # directly when the injected snippets are insufficient. Replaces the
-    # retired dev-memory-context skill — drill-down is now a Read away, no
-    # extra skill hop needed.
+    # Footer: dump the authoritative memory layout so the agent can Read files
+    # directly. Replaces the retired dev-memory-context skill. Path layout is
+    # "directory header + relative filenames" to keep the footer compact.
     if not no_git:
         archive_root = paths.get("repo_artifacts")
         archive_dir = (
@@ -272,59 +277,59 @@ def _build_context_from_assets(assets, *, full=True, heading=None):
             if archive_root is not None
             else None
         )
-        path_lines = []
-        for key, label in (
+
+        branch_specs = (
             ("progress", "hot 层：当前进展 + 下一步 + 自动同步区"),
             ("risks", "hot 层：阻塞 + 后续注意点"),
             ("decisions", "决策背景（为什么这么做）"),
-            ("glossary", "术语 / 链接 / 测试命令"),
+            ("glossary", "术语 + 源资料入口"),
             ("overview", "分支概览（目标 / 范围 / 阶段 / 约束）"),
-            ("repo_overview", "repo 共享：长期目标 + 跨分支约束"),
-            ("repo_decisions", "repo 共享：跨分支通用决策"),
-            ("repo_glossary", "repo 共享：长期背景 + 共享入口"),
-        ):
-            p = paths.get(key)
-            if p is not None:
-                path_lines.append(f"- `{p}` — {label}")
-
-        archive_hint = (
-            f"_归档分支查询：`grep -r 'KEYWORD' {archive_dir}/` —— 体量大时派 Task 子 agent。_"
-            if archive_dir is not None
-            else None
+        )
+        repo_specs = (
+            ("repo_overview", "长期目标 + 跨分支约束"),
+            ("repo_decisions", "跨分支通用决策"),
+            ("repo_glossary", "长期背景 + 共享入口"),
         )
 
-        if not full:
-            repo_root = assets.get("repo_root")
-            repo_name = repo_root.name if hasattr(repo_root, "name") else "<repo>"
-            footer_lines = [
-                "---",
-                "_brief 摘要。本 repo 完整记忆见以下文件：_",
-                "",
-                *path_lines,
-            ]
-            if archive_hint:
-                footer_lines.extend(["", archive_hint])
-            footer_lines.extend(["", "_本轮产生新决策 / 进展 / 阻塞时走 `dev-memory-capture` 写入。_"])
-            parts.append("\n".join(footer_lines))
-        else:
-            truncation_note = (
-                "上文标注 `完整内容: <path>` 的段落已截断，需详情请直接 Read 该文件。"
-                if any_truncated
-                else "本轮需要更多细节时直接 Read 下面列出的文件，无需先调任何 skill。"
+        def _group(specs):
+            lines = []
+            common_dir = None
+            for key, label in specs:
+                p = paths.get(key)
+                if p is None:
+                    continue
+                if common_dir is None:
+                    common_dir = p.parent
+                lines.append(f"- {p.name} — {label}")
+            return common_dir, lines
+
+        branch_dir, branch_lines = _group(branch_specs)
+        repo_dir, repo_lines = _group(repo_specs)
+
+        footer_lines = ["---"]
+        if full:
+            opening = (
+                "SessionStart 注入的浓缩摘要 — "
+                + (
+                    "上文标注 ↪ 的段落已截断，详情 Read 对应文件。"
+                    if any_truncated
+                    else "需要更多细节时直接 Read 下面列出的文件。"
+                )
             )
-            footer_lines = [
-                "---",
-                "_以上为 SessionStart 自动注入的浓缩摘要（非完整记忆）。"
-                + truncation_note + "_",
+        else:
+            opening = "Brief 摘要。本 repo 完整记忆见以下文件："
+        footer_lines.append(opening)
+        if branch_lines and branch_dir:
+            footer_lines.extend(["", f"分支层 `{branch_dir}/`：", *branch_lines])
+        if repo_lines and repo_dir:
+            footer_lines.extend(["", f"repo 共享层 `{repo_dir}/`：", *repo_lines])
+        if archive_dir is not None:
+            footer_lines.extend([
                 "",
-                "_完整记忆文件（按 tiered lookup 优先级）：_",
-                "",
-                *path_lines,
-            ]
-            if archive_hint:
-                footer_lines.extend(["", archive_hint])
-            footer_lines.extend(["", "_本轮产生新决策 / 进展 / 阻塞时走 `dev-memory-capture` 写入。_"])
-            parts.append("\n".join(footer_lines))
+                f"归档分支查询：`grep -r 'KEYWORD' {archive_dir}/` （体量大时派 Task 子 agent）",
+            ])
+        footer_lines.extend(["", "新决策 / 进展 / 阻塞 → `dev-memory-capture` 写入。"])
+        parts.append("\n".join(footer_lines))
 
     return "\n\n".join(parts)
 
