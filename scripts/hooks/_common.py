@@ -135,16 +135,23 @@ def extract_section(path, title):
 
 
 def compact_body(text, max_lines=8, max_chars=700):
+    """Compact a section body. Returns (compacted_text, was_truncated). The
+    caller uses `was_truncated` to decide whether to append a "see full file"
+    hint so the AI doesn't mistake the trimmed snippet for the whole story.
+    """
     normalized = "\n".join(line.rstrip() for line in text.splitlines()).strip()
     lines = [line for line in normalized.splitlines() if line.strip()]
+    truncated = False
     if len(lines) > max_lines:
         lines = lines[:max_lines]
         if not lines[-1].endswith("..."):
             lines.append("...")
+        truncated = True
     compacted = "\n".join(lines)
     if len(compacted) > max_chars:
         compacted = compacted[: max_chars - 3].rstrip() + "..."
-    return compacted
+        truncated = True
+    return compacted, truncated
 
 
 def sync_context_for(repo_root):
@@ -210,7 +217,7 @@ def _extract_sections(paths, keys):
     out = []
     for file_key, title in keys:
         body = extract_section(paths[file_key], title)
-        out.append((title, body))
+        out.append((title, body, file_key))
     return out
 
 
@@ -240,21 +247,49 @@ def _build_context_from_assets(assets, *, full=True, heading=None):
             parts.append(f"已加载 dev-memory（分支 `{assets['branch_name']}`）。")
     else:
         parts.append(heading)
-    for title, body in sections:
-        if body:
-            parts.append(f"{title}:\n{compact_body(body, max_lines=max_lines, max_chars=max_chars)}")
+
+    any_truncated = False
+    for title, body, file_key in sections:
+        if not body:
+            continue
+        compacted, truncated = compact_body(body, max_lines=max_lines, max_chars=max_chars)
+        block = f"{title}:\n{compacted}"
+        if truncated:
+            file_path = paths.get(file_key)
+            if file_path is not None:
+                block += f"\n_完整内容: {file_path}_"
+            any_truncated = True
+        parts.append(block)
 
     # Brief-mode footer: point the agent (and the human reading this prompt)
     # at the exact command to pull full memory. Without this, an agent that
     # sees a 4-line brief may just act on it without realising there's 10x
     # more detail one call away. no-git path has no drill-down concept, so
     # skip it there.
-    if not full and not no_git:
-        repo_root = assets.get("repo_root")
-        repo_name = repo_root.name if hasattr(repo_root, "name") else "<repo>"
-        parts.append(
-            f"_brief 摘要。本 repo 完整记忆 → `dev-memory-context show --repo {repo_name}`_"
-        )
+    if not no_git:
+        if not full:
+            repo_root = assets.get("repo_root")
+            repo_name = repo_root.name if hasattr(repo_root, "name") else "<repo>"
+            parts.append(
+                f"_brief 摘要。本 repo 完整记忆 → `dev-memory-context show --repo {repo_name}`_"
+            )
+        else:
+            # Full-mode footer: counter the "context already injected ≡ context
+            # is exhaustive" cognitive bias. Even when nothing was truncated,
+            # the agent should still walk the using-dev-memory router on each
+            # turn — capture vs context vs graduate is a per-turn decision,
+            # not a one-shot SessionStart artifact.
+            truncation_note = (
+                "上文标注 `完整内容: <path>` 的段落已截断，需详情请直接 Read 该文件。"
+                if any_truncated
+                else "需进一步细节请通过 `dev-memory-context` skill 拉取完整文件。"
+            )
+            parts.append(
+                "---\n"
+                "_以上为 SessionStart 自动注入的浓缩摘要（非完整记忆）。"
+                "进入开发讨论前仍走 `using-dev-memory` 路由判断本轮该不该 capture / context / graduate；"
+                f"{truncation_note}_"
+            )
 
     return "\n\n".join(parts)
 
