@@ -122,10 +122,11 @@ dev-memory-cli read search --repo <repo-path> --query "关键词"
 
 仅当用户明确点名该 Skill 时进入。入口不承载完整维护说明，而是按用户选择只读取一个子流程：
 
+- 主动沉淀：`references/distill.md`
 - 整理：`references/tidy.md`
 - 归档：`references/archive.md`
 
-用户没有给类型时，先询问“整理还是归档”；已经给出类型时直接执行。Skill 在当前会话中运行底层 `setup` / `tidy` / `graduate` CLI 流程，不再递归调用 `dev-memory-cli maintain`。
+用户没有给类型时，先询问“主动沉淀、整理还是归档”；已经给出类型时直接执行。Skill 在当前会话中运行底层 `capture` / `setup` / `tidy` / `graduate` CLI 流程，不再递归调用 `dev-memory-cli maintain`。
 
 ### 初始化
 
@@ -136,6 +137,14 @@ dev-memory-cli init --repo <repo-path>
 ```
 
 初始化是确定性 CLI 动作，不需要 Agent Skill。
+
+### 主动沉淀
+
+```bash
+dev-memory-cli maintain distill --repo <repo-path>
+```
+
+distill 从用户指定资料、代码事实或 Git 证据中提炼稳定语义，对照已有记忆生成差量 proposal，经用户确认后新增、upsert 或精确改写。第一次建档和后续主动增量沉淀使用同一流程，因此不设置 `completed` 门禁，也不修改 session-scan cursor。
 
 ### 整理
 

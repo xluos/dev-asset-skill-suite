@@ -1,11 +1,11 @@
 ---
 name: dev-memory-maintain
-description: dev-memory 的手动维护入口。仅当用户明确点名 `dev-memory-maintain`（例如 `$dev-memory-maintain`）时使用；不要因普通的“整理记忆”或“归档分支”等自然语言自动触发。根据用户选择，只进入整理或归档对应的子流程。
+description: dev-memory 的手动维护入口。仅当用户明确点名 `dev-memory-maintain`（例如 `$dev-memory-maintain`）时使用；不要因普通的“沉淀记忆”“整理记忆”或“归档分支”等自然语言自动触发。根据用户选择，只进入主动沉淀、整理或归档对应的子流程。
 ---
 
 # Dev Memory Maintain
 
-这是整理与归档的统一手动入口。它不自动判断开发是否结束，也不在普通会话中主动触发。
+这是主动沉淀、整理与归档的统一手动入口。它不自动判断何时应沉淀或开发是否结束，也不在普通会话中主动触发。
 
 ## 按类型路由
 
@@ -13,10 +13,11 @@ description: dev-memory 的手动维护入口。仅当用户明确点名 `dev-me
 
 | 用户选择 | 读取 |
 | --- | --- |
+| 主动沉淀、提炼、distill，从资料或代码事实写入记忆 | [references/distill.md](references/distill.md) |
 | 整理、tidy、清理未分类或陈旧记忆 | [references/tidy.md](references/tidy.md) |
 | 归档、archive、上提共享知识后归档分支 | [references/archive.md](references/archive.md) |
 
-如果用户只调用了本 Skill，没有说明类型，先问一句：“这次要整理还是归档？”
+如果用户只调用了本 Skill，没有说明类型，先问一句：“这次要主动沉淀、整理，还是归档？”
 
 用户已经说明类型时直接进入对应流程，不重复确认类型。读取对应 reference 后完整遵守其中的检查、审核、确认和复核步骤。
 

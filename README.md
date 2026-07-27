@@ -22,9 +22,9 @@ Dev Memory Skill Suite 为 Codex、Claude Code、Trae / Trae CN 等 coding agent
 | Skill | 职责 | 适用场景 |
 | --- | --- | --- |
 | `dev-memory-read` | 定位并搜索当前 repo/branch 的权威记忆，只读不写 | 主动恢复既有记忆、查询历史 TODO |
-| `dev-memory-maintain` | 手动选择整理或归档，再按需读取对应子流程 | 用户显式调用 Skill 做记忆维护 |
+| `dev-memory-maintain` | 手动选择主动沉淀、整理或归档，再按需读取对应子流程 | 用户显式调用 Skill 做记忆维护 |
 
-普通开发会话不再常驻 capture/setup/tidy/graduate 等多个 Skill。会话写入由 session-scan 后台处理；`dev-memory-maintain` 只在用户明确点名时启用，并根据用户选择加载整理或归档其中一套流程。CLI 仍可临时启动独立维护 Agent。
+普通开发会话不再常驻 capture/setup/tidy/graduate 等多个 Skill。会话写入由 session-scan 后台处理；`dev-memory-maintain` 只在用户明确点名时启用，并根据用户选择加载主动沉淀、整理或归档其中一套流程。CLI 仍可临时启动独立维护 Agent。
 
 ## 安装
 
@@ -97,6 +97,9 @@ dev-memory-cli init
 # 查看当前仓库和分支对应的记忆路径
 dev-memory-cli read show
 
+# 启动独立主动沉淀 Agent（可首次建档，也可反复增量执行）
+dev-memory-cli maintain distill
+
 # 只在当前 repo 的记忆范围内搜索
 dev-memory-cli read search --query "发布流程" --query "回滚"
 
@@ -151,18 +154,21 @@ dev-memory-cli capture delete-entry --id <entry-id>
 
 符合跨分支复用判定的内容会同时进入 `pending-promotion.md`，由归档维护 Agent 在分支收尾阶段审核；候选内容不会直接写入 repo 共享层。
 
-### 整理与归档
+### 主动沉淀、整理与归档
 
-显式调用 `dev-memory-maintain` 后选择“整理”或“归档”，Skill 会只读取对应的子流程，并在当前会话中完成检查、审核和执行。它不会因为普通开发对话自动触发。
+显式调用 `dev-memory-maintain` 后选择“主动沉淀”“整理”或“归档”，Skill 会只读取对应的子流程，并在当前会话中完成检查、审核和执行。它不会因为普通开发对话自动触发。
 
-也可以继续使用下面两个 CLI 入口启动独立交互式 Agent：
+也可以继续使用下面三个 CLI 入口启动独立交互式 Agent：
 
 | 命令 | 处理对象 | 结果 |
 | --- | --- | --- |
+| `dev-memory-cli maintain distill` | 用户指定的资料、代码事实或 Git 证据 | 对照已有记忆生成差量 proposal，确认后新增、upsert 或精确改写 |
 | `dev-memory-cli maintain tidy` | `unsorted.md` 与已结构化但漂移的内容 | 分类、proposal HTML 审核、备份后 edit/delete/reset |
 | `dev-memory-cli maintain archive` | 已完成分支的有效记忆 | dry-run、上提跨分支知识、确认后移入 `_archived` |
 
-维护 Agent 内部使用 `setup`、`tidy`、`graduate` 等低层子命令。`tidy apply` 和 `graduate apply` 会改变或移动已有记忆，仍然受人工审核和显式确认门禁保护。用 `--print-prompt` 可以只查看将传给独立 Agent 的完整维护指令。
+`distill` 处理“外部事实 → 语义记忆”，第一次建档和后续主动增量沉淀使用同一流程；它没有 completed 状态，也不影响 session-scan cursor。`tidy` 只整理已有记忆，`archive` 负责分支收尾。
+
+维护 Agent 内部使用 `capture`、`setup`、`tidy`、`graduate` 等低层子命令。distill 写入、`tidy apply` 和 `graduate apply` 都受人工审核或显式确认门禁保护。用 `--print-prompt` 可以只查看将传给独立 Agent 的完整维护指令。
 
 ### 分支记忆操作
 
@@ -328,7 +334,7 @@ dev-memory-cli context injection-preview \
 ```text
 dev-memory-cli read <show|search>
 dev-memory-cli init [--repo PATH] [--branch NAME]
-dev-memory-cli maintain <tidy|archive> [--repo PATH] [--branch NAME] [--executor auto|codex|coco]
+dev-memory-cli maintain <distill|tidy|archive> [--repo PATH] [--branch NAME] [--executor auto|codex|coco]
 # low-level mutation/admin commands:
 dev-memory-cli capture <show|suggest-kind|classify|record|list-entries|find-candidates|rewrite-entry|delete-entry|apply-summary-output|sync-working-tree|record-head>
 dev-memory-cli setup <init|merge-unsorted|mark-completed>

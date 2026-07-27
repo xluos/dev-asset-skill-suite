@@ -114,7 +114,7 @@ npx dev-memory-cli read search --scope archived --query "..."
 - 主动定位和读取：使用当前 `dev-memory-read` skill。
 - 会话语义写入：由定期 `session-scan` 后台处理，不要求普通开发 Agent 在会话中即时写盘。
 - 初始化记忆：显式运行 `dev-memory-cli init`。
-- 整理未分类内容、清理旧条目或归档分支：用户显式调用 `dev-memory-maintain` 并选择对应类型；也可以运行 `dev-memory-cli maintain tidy|archive` 启动独立维护 Agent。
+- 从资料或代码事实主动沉淀记忆、整理未分类内容、清理旧条目或归档分支：用户显式调用 `dev-memory-maintain` 并选择对应类型；也可以运行 `dev-memory-cli maintain distill|tidy|archive` 启动独立维护 Agent。
 - `capture` / `setup` / `tidy` / `graduate` 子命令是后台总结和维护 Agent 使用的低层 CLI，不是常驻 skill。
 
 `dev-memory-read` 不会创建新记忆骨架，也不会修改任何文件。
