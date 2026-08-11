@@ -235,12 +235,12 @@ dev-memory-cli session-scan config set-executor codex
 dev-memory-cli session-scan config set-model codex <model>
 dev-memory-cli session-scan config set-poll-interval 10
 dev-memory-cli session-scan config set-idle-minutes 30
-dev-memory-cli session-scan config set-timeout 360
+dev-memory-cli session-scan config set-timeout 600
 ```
 
 已安装滚动扫描任务时，`set-poll-interval` 会自动重载 LaunchAgent；静默阈值由每次运行动态读取。扫描和 replay 共用单实例锁，上一轮尚未结束时新的轮询会记录 `skipped_running`，不会并发写入。
 
-`replay` 会按历史 run 记录的 `cursor_before` / `cursor_after` 精确重放指定会话，不回退当前会话游标；`--executor` 只覆盖本次运行，不修改持久配置。单分块会话只调用一次模型；最终结果必须包含至少一个记忆变更，或提供非空 `skip_reason`。空对象、只有 `title`、以及没有产生语义 action 且未说明原因的结果都会标记失败并保留重试空间。单次模型调用默认 360 秒超时，超时不会立即重试。run 账本会记录输出字段计数、`skip_reason`、payload 哈希、有效/观测字节数和语义 action 数，不保存原始总结正文。
+`replay` 会按历史 run 记录的 `cursor_before` / `cursor_after` 精确重放指定会话，不回退当前会话游标；`--executor` 只覆盖本次运行，不修改持久配置。单分块会话直接生成最终结果。模型侧只需返回 `entries: [{kind, content}]`，或在没有新增价值时单独返回非空 `skip_reason`；session-scan 会把简化结果转换成内部 capture schema。解析或 schema 校验失败时，下一次模型调用会收到具体错误并在同一轮修正；空对象、只有 `title`、以及二次输出后仍无有效结果的任务才会标记失败并保留后续重试空间。单次模型调用默认 600 秒超时，超时不会立即重试。run 账本会记录输出字段计数、`skip_reason`、payload 哈希、有效/观测字节数和语义 action 数，不保存原始总结正文。
 
 ## 运行模式
 

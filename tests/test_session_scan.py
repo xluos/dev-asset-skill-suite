@@ -164,7 +164,7 @@ def test_config_defaults_prefer_claude_then_codex_and_keep_coco_preset():
     assert set(config["executors"]) == {"coco", "codex", "claude"}
     assert config["poll_interval_minutes"] == 10
     assert config["idle_minutes"] == 30
-    assert config["invocation_timeout_seconds"] == 360
+    assert config["invocation_timeout_seconds"] == 600
     assert scan.validate_config(config)["valid"] is True
 
 
@@ -430,7 +430,9 @@ def test_agentic_file_uses_one_final_invocation_and_rejects_empty_output(tmp_pat
     monkeypatch.setattr(scan, "choose_executor", lambda _config: ("fake", {"model": None, "profile": None}))
     calls = []
 
-    def fake_executor(_name, _preset, prompt, _cwd, _run_id, invocation, _max_attempts):
+    def fake_executor(
+        _name, _preset, prompt, _cwd, _run_id, invocation, _max_attempts, _validate_payload,
+    ):
         payload = json.loads(prompt.split("INPUT_JSON:\n", 1)[1])
         transcript = Path(payload["transcript_path"])
         assert transcript.exists()
@@ -453,6 +455,7 @@ def test_agentic_file_uses_one_final_invocation_and_rejects_empty_output(tmp_pat
     assert len(calls) == 1
     assert calls[0][1].endswith(":final")
     assert "请自行使用 rg、sed 等只读工具" in calls[0][0]
+    assert '"entries"' in calls[0][0]
     assert "记住这个稳定决策" not in calls[0][0]
     assert calls[0][2]["message_count"] == 1
     assert not Path(calls[0][2]["transcript_path"]).exists()
@@ -531,7 +534,7 @@ def test_semantic_apply_is_done_and_advances_cursor(tmp_path, monkeypatch):
         scan,
         "run_executor_with_retries",
         lambda *_args: (
-            {"decisions": [{"summary": "稳定决策"}]},
+            {"entries": [{"kind": "decision", "content": "稳定决策"}]},
             [{"returncode": 0, "usage": {"total_tokens": 10}}],
         ),
     )
@@ -557,7 +560,7 @@ def test_semantic_apply_is_done_and_advances_cursor(tmp_path, monkeypatch):
     run = json.loads((scan.SCAN_ROOT / "runs" / "run-3.json").read_text(encoding="utf-8"))
     assert run["done_count"] == 1
     assert run["sessions"][0]["semantic_action_count"] == 1
-    assert run["sessions"][0]["summary_output"]["field_counts"] == {"decisions": 1}
+    assert run["sessions"][0]["summary_output"]["field_counts"] == {"appends": 1}
 
 
 def test_replay_reconstructs_historical_cursor_slice(tmp_path, monkeypatch):
@@ -617,6 +620,78 @@ def test_executor_timeout_is_a_single_failed_attempt(tmp_path, monkeypatch):
     assert len(records) == 1
     assert records[0]["timed_out"] is True
     assert records[0]["timeout_seconds"] == 30
+
+
+def test_schema_validation_error_is_returned_to_executor_for_second_attempt(tmp_path, monkeypatch):
+    prompts = []
+    payloads = [
+        {"entries": [{"kind": "unknown", "content": "真实内容"}]},
+        {"entries": [{"kind": "decision", "content": "修正后的稳定结论"}]},
+    ]
+
+    def fake_run_executor(_name, _preset, prompt, _cwd, _run_id, invocation):
+        prompts.append(prompt)
+        return payloads.pop(0), {"invocation": invocation, "returncode": 0}
+
+    monkeypatch.setattr(scan, "run_executor", fake_run_executor)
+    payload, records = scan.run_executor_with_retries(
+        "fake",
+        {"command": "fake"},
+        "original prompt",
+        str(tmp_path),
+        "run-schema-retry",
+        "session-1:final",
+        2,
+        scan._agent_summary_payload_validation_errors,
+    )
+
+    assert payload == {"entries": [{"kind": "decision", "content": "修正后的稳定结论"}]}
+    assert len(records) == 2
+    assert "entries[0].kind must be one of" in records[0]["error"]
+    assert "entries[0].kind must be one of" in prompts[1]
+
+
+def test_schema_validation_failure_after_second_attempt_returns_no_payload(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        scan,
+        "run_executor",
+        lambda *_args: (
+            {"entries": [{"kind": "unknown", "content": "真实内容"}]},
+            {"returncode": 0},
+        ),
+    )
+
+    payload, records = scan.run_executor_with_retries(
+        "fake",
+        {"command": "fake"},
+        "original prompt",
+        str(tmp_path),
+        "run-schema-failure",
+        "session-1:final",
+        2,
+        scan._agent_summary_payload_validation_errors,
+    )
+
+    assert payload is None
+    assert len(records) == 2
+    assert all("entries[0].kind must be one of" in record["error"] for record in records)
+
+
+def test_simplified_agent_summary_normalizes_to_capture_schema():
+    payload = {
+        "title": "本轮结论",
+        "entries": [
+            {"kind": "decision", "content": "采用统一协议"},
+            {"kind": "overview", "content": "当前目标已更新"},
+        ],
+    }
+
+    assert scan._agent_summary_payload_validation_errors(payload) == []
+    assert scan._normalize_agent_summary_payload(payload) == {
+        "title": "本轮结论",
+        "appends": [{"kind": "decision", "content": "采用统一协议"}],
+        "upserts": [{"kind": "overview", "content": "当前目标已更新"}],
+    }
 
 
 def test_replay_parser_accepts_one_shot_executor_override():
